@@ -3,7 +3,7 @@ import type { NextRequest } from "next/server"
 
 export function middleware(request: NextRequest) {
 
-  const isLoggedIn = request.cookies.get("session")
+  const isLoggedIn = request.cookies.get("session");
 
   const { pathname } = request.nextUrl
 
@@ -23,12 +23,12 @@ export function middleware(request: NextRequest) {
   )
 
   // este debe funcionar seguramente una vez que se implemente el login en mongodb
-  // if (isProtected && !isLoggedIn) {
-  //   return NextResponse.redirect(new URL("/login", request.url))
-  // }
-  if (isProtected) {  // Quita "&& !isLoggedIn" para bloquear siempre
+  if (isProtected && !isLoggedIn) {
     return NextResponse.redirect(new URL("/login", request.url))
   }
+  // if (isProtected) {  // Quita "&& !isLoggedIn" para bloquear siempre
+  //   return NextResponse.redirect(new URL("/login", request.url))
+  // }
 
   return NextResponse.next()
 }
