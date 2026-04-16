@@ -37,7 +37,14 @@ import {
   AlertDialogTitle,
   AlertDialogFooter,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { Pencil, Trash2 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 
@@ -215,46 +222,69 @@ export default function UsersPage() {
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      setSelectedUser(user)
-                      setOpen(true)
-                    }}
-                  >
-                    Editar
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="destructive">
-                        Eliminar
-                      </Button>
-                    </AlertDialogTrigger>
+                  <div className="flex items-center gap-2">
 
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>
-                          ¿Eliminar usuario?
-                        </AlertDialogTitle>
-                      </AlertDialogHeader>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            onClick={() => {
+                              setSelectedUser(user)
+                              setOpen(true)
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          Editar usuario
+                        </TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="icon" variant="destructive">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
 
-                      <p className="text-sm text-gray-500">
-                        Esta acción no se puede deshacer.
-                      </p>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  ¿Eliminar usuario?
+                                </AlertDialogTitle>
+                              </AlertDialogHeader>
 
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>
-                          Cancelar
-                        </AlertDialogCancel>
+                              <p className="text-sm text-gray-500">
+                                Esta acción no se puede deshacer.
+                              </p>
 
-                        <AlertDialogAction
-                          onClick={() => handleDelete(user._id)}
-                        >
-                          Sí, eliminar
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>
+                                  Cancelar
+                                </AlertDialogCancel>
+
+                                <AlertDialogAction
+                                  onClick={() => handleDelete(user._id)}
+                                >
+                                  Sí, eliminar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </TooltipTrigger>
+
+                        <TooltipContent>
+                          Eliminar usuario
+                        </TooltipContent>
+                      </Tooltip>
+
+                    </TooltipProvider>
+
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
