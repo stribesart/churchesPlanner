@@ -6,10 +6,10 @@ if (!uri) {
   throw new Error("Please define MONGODB_URI")
 }
 
-let client: MongoClient
-let clientPromise: Promise<MongoClient>
+// let client: MongoClient
+// let clientPromise: Promise<MongoClient>
 
-client = new MongoClient(uri)
-clientPromise = client.connect()
+const client: MongoClient = new MongoClient(uri)
+const clientPromise: Promise<MongoClient> = client.connect()
 
 export default clientPromise

@@ -36,6 +36,7 @@ export default function LoginPage() {
   }
 
   return (
+    <>
     <div className="flex h-screen items-center justify-center bg-gray-100">
       <Card className="w-[400px]">
         <CardHeader>
@@ -68,5 +69,6 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
+    </>
   )
 };
