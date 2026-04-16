@@ -10,8 +10,6 @@ export async function GET() {
 
   const users = await db.collection("users").find().toArray()
 
-  console.log('usuarios encontrados', users)
-
   return NextResponse.json(users)
 };
 

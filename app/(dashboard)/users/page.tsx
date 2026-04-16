@@ -28,6 +28,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogFooter,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 import { Badge } from "@/components/ui/badge"
 
@@ -41,7 +51,7 @@ type User = {
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([])
   const [open, setOpen] = useState(false)
-  const [selectedUser, setSelectedUser] = useState<any>(null) 
+  const [selectedUser, setSelectedUser] = useState<any>(null)
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -80,6 +90,22 @@ export default function UsersPage() {
       setRole("miembro")
     } else {
       alert("Error al crear usuario")
+    }
+  }
+
+  async function handleDelete(id: string) {
+    const res = await fetch(`/api/users/${id}`, {
+      method: "DELETE",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ id }),
+    })
+
+    if (res.ok) {
+      fetchUsers() // refresca tabla
+    } else {
+      alert("Error al eliminar")
     }
   }
 
@@ -138,20 +164,20 @@ export default function UsersPage() {
 
             <div>
               <Label>Rol</Label>
-                <Select value={role} onValueChange={setRole} defaultValue="Miembro">
-                  <SelectTrigger className="w-[180px]">
-                    <SelectValue placeholder="Theme" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value="Pastor">Pastor</SelectItem>
-                      <SelectItem value="Lider">Lider</SelectItem>
-                      <SelectItem value="admin">admin</SelectItem>
-                      <SelectItem value="Miembro">Miembro</SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
-              
+              <Select value={role} onValueChange={setRole} defaultValue="Miembro">
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Theme" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    <SelectItem value="Pastor">Pastor</SelectItem>
+                    <SelectItem value="Lider">Lider</SelectItem>
+                    <SelectItem value="admin">admin</SelectItem>
+                    <SelectItem value="Miembro">Miembro</SelectItem>
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+
             </div>
 
             <Button onClick={handleCreateUser} className="w-full">
@@ -198,6 +224,37 @@ export default function UsersPage() {
                   >
                     Editar
                   </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="destructive">
+                        Eliminar
+                      </Button>
+                    </AlertDialogTrigger>
+
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>
+                          ¿Eliminar usuario?
+                        </AlertDialogTitle>
+                      </AlertDialogHeader>
+
+                      <p className="text-sm text-gray-500">
+                        Esta acción no se puede deshacer.
+                      </p>
+
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>
+                          Cancelar
+                        </AlertDialogCancel>
+
+                        <AlertDialogAction
+                          onClick={() => handleDelete(user._id)}
+                        >
+                          Sí, eliminar
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </TableCell>
               </TableRow>
             ))}
