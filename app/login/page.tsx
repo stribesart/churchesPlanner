@@ -28,7 +28,7 @@ export default function LoginPage() {
     });
 
     if (res.ok) {
-      router.replace("/dashboard")
+      router.replace("/users")
       router.refresh()
     } else {
       alert("Credenciales incorrectas")

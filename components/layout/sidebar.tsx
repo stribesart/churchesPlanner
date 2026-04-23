@@ -40,12 +40,12 @@ const menu = [
     items: [
       {
         name: "Miembros",
-        href: "/dashboard/members",
+        href: "/users",
         icon: Users,
       },
       {
         name: "Usuarios",
-        href: "/dashboard/users",
+        href: "/users",
         icon: Users,
         roles: ["ADMIN"], // solo pastor
       },
