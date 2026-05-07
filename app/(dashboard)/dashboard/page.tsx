@@ -13,6 +13,7 @@ export default function DashboardPage() {
     attendance: 0,
     events: [],
     activities: [],
+    announcements: [],
     groupName: "",
   })
   const [loading, setLoading] = useState(true)
@@ -27,6 +28,10 @@ export default function DashboardPage() {
           setUser(userData)
         }
 
+        // Obtener anuncios
+        const announcementsRes = await fetch("/api/announcements")
+        const announcements = announcementsRes.ok ? await announcementsRes.json() : []
+
         // TODO: Obtener datos del dashboard desde la API
         // Por ahora usando datos de ejemplo
         const data = {
@@ -39,6 +44,7 @@ export default function DashboardPage() {
           activities: [
             { id: 1, description: "Nuevo miembro registrado" },
           ],
+          announcements,
           groupMembers: 20,
           attendance: 85,
           groupName: "Jóvenes"
@@ -49,10 +55,12 @@ export default function DashboardPage() {
           totalLeaders: 8,
           events: [
             { id: 1, title: "Servicio Dominical", date: "Domingo 10:00 AM" },
+            { id: 2, title: "Reunión de Jóvenes", date: "Sábado 7:00 PM" },
           ],
           activities: [
             { id: 1, description: "Nuevo miembro registrado" },
           ],
+          announcements,
           groupMembers: 20,
           attendance: 85,
           groupName: "Jóvenes"

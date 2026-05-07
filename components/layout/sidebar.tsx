@@ -56,17 +56,17 @@ const menu = [
     items: [
       {
         name: "Ministerios",
-        href: "/dashboard/ministries",
+        href: "/ministeries",
         icon: Church,
       },
       {
         name: "Eventos",
-        href: "/dashboard/events",
+        href: "/events",
         icon: Calendar,
       },
       {
         name: "Anuncios",
-        href: "/dashboard/announcements",
+        href: "/announcements",
         icon: Megaphone,
       },
     ],
@@ -76,7 +76,7 @@ const menu = [
     items: [
       {
         name: "Ofrendas",
-        href: "/dashboard/offers",
+        href: "/offerings",
         icon: DollarSign,
       },
     ],
@@ -86,7 +86,7 @@ const menu = [
     items: [
       {
         name: "Configuración",
-        href: "/dashboard/settings",
+        href: "/settings",
         icon: Settings,
       },
     ],

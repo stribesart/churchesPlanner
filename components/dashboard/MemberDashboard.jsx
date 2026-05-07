@@ -1,5 +1,6 @@
 // components/dashboard/MemberDashboard.jsx
 import EventList from "./EventList";
+import AnnouncementsList from "./AnnouncementsList";
 
 export default function MemberDashboard({ data }) {
   return (
@@ -12,6 +13,8 @@ export default function MemberDashboard({ data }) {
           Grupo: <span className="font-semibold">{data.groupName}</span>
         </p>
       </div>
+
+      <AnnouncementsList announcements={data.announcements || []} />
 
       <EventList events={data.events} />
 
