@@ -34,21 +34,6 @@ export default function DashboardPage() {
 
         // TODO: Obtener datos del dashboard desde la API
         // Por ahora usando datos de ejemplo
-        const data = {
-          totalMembers: 120,
-          newMembers: 5,
-          totalLeaders: 8,
-          events: [
-            { id: 1, title: "Servicio Dominical", date: "Domingo 10:00 AM" },
-          ],
-          activities: [
-            { id: 1, description: "Nuevo miembro registrado" },
-          ],
-          announcements,
-          groupMembers: 20,
-          attendance: 85,
-          groupName: "Jóvenes"
-        };
         setData({
           totalMembers: 120,
           newMembers: 5,
@@ -76,7 +61,21 @@ export default function DashboardPage() {
   }, [])
 
   if (loading) {
-    return <div className="p-6">Cargando...</div>
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
+        <div className="mx-auto flex min-h-screen max-w-7xl items-center px-6 py-20">
+          <div className="w-full rounded-3xl border bg-white p-8 shadow-xl sm:p-10">
+            <div className="flex items-center gap-4">
+              <div className="h-11 w-11 animate-pulse rounded-full bg-blue-100" />
+              <div className="space-y-3">
+                <div className="h-4 w-28 animate-pulse rounded-full bg-slate-200" />
+                <div className="h-3 w-44 animate-pulse rounded-full bg-slate-100" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (

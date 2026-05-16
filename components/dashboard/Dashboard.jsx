@@ -5,10 +5,12 @@ import MemberDashboard from "./MemberDashboard";
 
 export default function Dashboard({ role, data }) {
   return (
-    <div className="p-6 bg-gray-50 min-h-screen">
-      {(role === "admin" || role === "pastor") && <AdminDashboard data={data} />}
-      {role === "lider" && <LeaderDashboard data={data} />}
-      {role === "miembro" && <MemberDashboard data={data} />}
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
+      <div className="mx-auto max-w-7xl px-6 py-10 text-slate-900 sm:py-12 lg:py-16">
+        {(role === "admin" || role === "pastor") && <AdminDashboard data={data} />}
+        {role === "lider" && <LeaderDashboard data={data} />}
+        {role === "miembro" && <MemberDashboard data={data} />}
+      </div>
     </div>
   );
 }

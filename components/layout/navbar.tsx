@@ -46,7 +46,7 @@ export function Navbar() {
               Iniciar sesión
             </Link>
             <Link
-              href="/dashboard"
+              href="/login"
               className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition font-medium"
             >
               Comenzar gratis
@@ -87,7 +87,7 @@ export function Navbar() {
                   Iniciar sesión
                 </Link>
                 <Link
-                  href="/dashboard"
+                  href="/login"
                   className="text-center bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition font-medium"
                 >
                   Comenzar gratis

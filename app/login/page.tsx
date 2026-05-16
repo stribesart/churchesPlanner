@@ -1,15 +1,14 @@
 "use client"
 
 import { useRouter } from "next/navigation"
+import { useState } from "react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { useState } from "react"
 
 export default function LoginPage() {
-
   const router = useRouter()
 
   const [email, setEmail] = useState("")
@@ -25,7 +24,7 @@ export default function LoginPage() {
       method: "POST",
       credentials: "include",
       body: JSON.stringify({ email, password }),
-    });
+    })
 
     if (res.ok) {
       router.replace("/users")
@@ -36,39 +35,59 @@ export default function LoginPage() {
   }
 
   return (
-    <>
-    <div className="flex h-screen items-center justify-center bg-gray-100">
-      <Card className="w-[400px]">
-        <CardHeader>
-          <CardTitle className="text-center">
-            Churches Planner
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label>Email</Label>
-              <Input 
-                type="email"
-                placeholder="correo@ejemplo.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}/>
+    <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 text-slate-900">
+      <section className="flex min-h-screen items-center justify-center px-6 py-12">
+        <Card className="w-full max-w-md rounded-3xl border bg-white/90 shadow-xl backdrop-blur">
+          <CardHeader className="space-y-3 text-center">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100">
+              <span className="text-2xl font-bold text-blue-700">CP</span>
             </div>
-            <div className="space-y-2">
-              <Label>Password</Label>
-              <Input 
-                type="password"
-                placeholder="********"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}/>
+
+            <div>
+              <CardTitle className="text-3xl font-bold text-slate-900">
+                Churches Planner
+              </CardTitle>
+              <p className="mt-2 text-sm text-slate-600">
+                Inicia sesión para administrar tu iglesia
+              </p>
             </div>
-            <Button className="w-full">
-              Iniciar sesión
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-    </div>
-    </>
+          </CardHeader>
+
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-5">
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700">
+                  Correo electrónico
+                </Label>
+                <Input
+                  type="email"
+                  placeholder="correo@ejemplo.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="h-11 rounded-xl border-slate-200 bg-white"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-slate-700">
+                  Contraseña
+                </Label>
+                <Input
+                  type="password"
+                  placeholder="********"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="h-11 rounded-xl border-slate-200 bg-white"
+                />
+              </div>
+
+              <Button className="h-11 w-full rounded-full bg-blue-700 font-semibold text-white transition hover:bg-blue-800">
+                Iniciar sesión
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </section>
+    </main>
   )
-};
+}
