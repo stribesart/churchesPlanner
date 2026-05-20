@@ -1,9 +1,15 @@
-// components/dashboard/Dashboard.jsx
-import AdminDashboard from "./AdminDashboard";
-import LeaderDashboard from "./LeaderDashboard";
-import MemberDashboard from "./MemberDashboard";
+// components/dashboard/Dashboard.tsx
+import AdminDashboard from "./AdminDashboard"
+import LeaderDashboard from "./LeaderDashboard"
+import MemberDashboard from "./MemberDashboard"
+import type { DashboardData, DashboardRole } from "./types"
 
-export default function Dashboard({ role, data }) {
+type Props = {
+  role: DashboardRole
+  data: DashboardData
+}
+
+export default function Dashboard({ role, data }: Props) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
       <div className="mx-auto max-w-7xl px-6 py-10 text-slate-900 sm:py-12 lg:py-16">
@@ -12,5 +18,5 @@ export default function Dashboard({ role, data }) {
         {role === "miembro" && <MemberDashboard data={data} />}
       </div>
     </div>
-  );
+  )
 }

@@ -1,9 +1,14 @@
-// components/dashboard/LeaderDashboard.jsx
-import { TrendingUp, UserRoundCheck, UsersRound } from "lucide-react";
-import StatsCard from "./StatsCard";
-import EventList from "./EventList";
+// components/dashboard/LeaderDashboard.tsx
+import { TrendingUp, UserRoundCheck, UsersRound } from "lucide-react"
+import StatsCard from "./StatsCard"
+import EventList from "./EventList"
+import type { DashboardData } from "./types"
 
-export default function LeaderDashboard({ data }) {
+type Props = {
+  data: DashboardData
+}
+
+export default function LeaderDashboard({ data }: Props) {
   return (
     <div className="space-y-8">
       <div className="rounded-3xl border bg-white p-6 shadow-xl sm:p-8">
@@ -26,5 +31,5 @@ export default function LeaderDashboard({ data }) {
 
       <EventList events={data.events} />
     </div>
-  );
+  )
 }

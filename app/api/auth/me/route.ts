@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
-import clientPromise from "@/lib/mongodb"
 import { ObjectId } from "mongodb"
+import { getTenantFromRequest, getTenantDbByName } from "@/lib/tenant"
 
 export async function GET(req: Request) {
   try {
@@ -19,16 +19,21 @@ export async function GET(req: Request) {
       return NextResponse.json({ user: null })
     }
 
-    const client = await clientPromise
-    const db = client.db("churchesPlanner")
+    const tenantDbName = await getTenantFromRequest(req)
 
-    const user = await db.collection("users").findOne({
+    if (!tenantDbName) {
+      return NextResponse.json({ user: null })
+    }
+
+    const tenantDb = await getTenantDbByName(tenantDbName)
+
+    const user = await tenantDb.collection("users").findOne({
       _id: new ObjectId(session),
     })
 
     return NextResponse.json({ user })
 
-  } catch (error) {
+  } catch {
     return NextResponse.json({ user: null })
   }
 }

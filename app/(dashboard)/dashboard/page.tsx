@@ -2,10 +2,15 @@
 
 import { useEffect, useState } from "react"
 import Dashboard from "@/components/dashboard/Dashboard"
+import type { DashboardData } from "@/components/dashboard/types"
+
+type User = {
+  role?: string
+}
 
 export default function DashboardPage() {
-  const [user, setUser] = useState(null)
-  const [data, setData] = useState({
+  const [user, setUser] = useState<User | null>(null)
+  const [data, setData] = useState<DashboardData>({
     totalMembers: 0,
     newMembers: 0,
     totalLeaders: 0,
@@ -25,7 +30,7 @@ export default function DashboardPage() {
         const userRes = await fetch("/api/auth/me")
         if (userRes.ok) {
           const userData = await userRes.json()
-          setUser(userData)
+          setUser(userData.user)
         }
 
         // Obtener anuncios

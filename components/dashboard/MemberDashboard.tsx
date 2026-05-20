@@ -1,9 +1,14 @@
-// components/dashboard/MemberDashboard.jsx
-import { Megaphone, UsersRound } from "lucide-react";
-import EventList from "./EventList";
-import AnnouncementsList from "./AnnouncementsList";
+// components/dashboard/MemberDashboard.tsx
+import { Megaphone, UsersRound } from "lucide-react"
+import EventList from "./EventList"
+import AnnouncementsList from "./AnnouncementsList"
+import type { DashboardData } from "./types"
 
-export default function MemberDashboard({ data }) {
+type Props = {
+  data: DashboardData
+}
+
+export default function MemberDashboard({ data }: Props) {
   return (
     <div className="space-y-8">
       <div className="rounded-3xl border bg-white p-6 shadow-xl sm:p-8">
@@ -34,5 +39,5 @@ export default function MemberDashboard({ data }) {
       <AnnouncementsList announcements={data.announcements || []} />
       <EventList events={data.events} />
     </div>
-  );
+  )
 }

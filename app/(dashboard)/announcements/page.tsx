@@ -36,6 +36,7 @@ type Announcement = {
   title: string
   content: string
   author: string
+  createdAt?: string
 }
 
 export default function AnnouncementsPage() {
@@ -64,8 +65,16 @@ export default function AnnouncementsPage() {
       return matchesTitle
     }
 
+    if (!announcement.createdAt) {
+      return false
+    }
+
     const announcementDate = new Date(announcement.createdAt)
     const filterDateObj = new Date(filterDate)
+
+    if (Number.isNaN(announcementDate.getTime())) {
+      return false
+    }
 
     const announcementDateStr = announcementDate.toISOString().split("T")[0]
     const filterDateStr = filterDateObj.toISOString().split("T")[0]

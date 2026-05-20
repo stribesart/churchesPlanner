@@ -2,8 +2,20 @@
 
 import Sidebar from "@/components/layout/sidebar"
 import Topbar from "@/components/layout/topbar"
+import MobileBottomNav from "@/components/layout/mobile-bottom-nav"
 
+import type { ReactNode } from "react"
 import { useEffect, useState } from "react"
+
+type User = {
+  name: string
+  role: string
+  email: string
+}
+
+type Props = {
+  children: ReactNode
+}
 
 export default function DashboardLayout({ children }: Props) {
   const [user, setUser] = useState<User | null>(null)
@@ -45,6 +57,8 @@ export default function DashboardLayout({ children }: Props) {
         <main className="p-6 bg-gray-50 flex-1 overflow-y-auto">
           {children}
         </main>
+
+        <MobileBottomNav user={user} />
 
       </div>
 

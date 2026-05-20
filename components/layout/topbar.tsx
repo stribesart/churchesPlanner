@@ -1,4 +1,14 @@
-export default function Topbar() {
+type User = {
+  name: string
+  role: string
+  email: string
+}
+
+type Props = {
+  user: User | null
+}
+
+export default function Topbar({ user }: Props) {
   return (
     <header className="h-16 border-b bg-white flex items-center justify-between px-6">
 
@@ -7,7 +17,7 @@ export default function Topbar() {
       </h1>
 
       <div>
-        Usuario
+        {user?.name || "Usuario"}
       </div>
 
     </header>

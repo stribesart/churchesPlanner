@@ -85,6 +85,15 @@ export default function LoginPage() {
                 Iniciar sesión
               </Button>
             </form>
+
+            <div className="mt-4 text-center">
+              <a
+                href="/register"
+                className="inline-flex h-11 w-full items-center justify-center rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+              >
+                Registrarse
+              </a>
+            </div>
           </CardContent>
         </Card>
       </section>

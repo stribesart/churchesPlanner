@@ -1,28 +1,31 @@
 import { NextResponse } from "next/server"
-import clientPromise from "@/lib/mongodb"
+import { getTenantFromRequest, getTenantDbByName } from "@/lib/tenant"
 import { ObjectId } from "mongodb"
 
-const dbName = "churchesPlanner"
+export async function GET(req: Request) {
+  const tenantDbName = await getTenantFromRequest(req)
 
-export async function GET() {
-  const client = await clientPromise
-  const db = client.db(dbName)
+  if (!tenantDbName) {
+    return NextResponse.json(
+      { message: "Acceso denegado" },
+      { status: 401 }
+    )
+  }
+
+  const db = await getTenantDbByName(tenantDbName)
 
   const ministeries = await db.collection("ministeries").find().toArray()
 
   // Obtener usuarios únicos que ya tienen un ministerio asignado
-  const leaderIds = ministeries
-    .map(m => m.leader)
-    .filter(Boolean)
-    .filter((id, index, self) => self.indexOf(id) === index)
-    .map(id => {
-      try {
-        return new ObjectId(id)
-      } catch {
-        return null
-      }
-    })
-    .filter(Boolean)
+  const uniqueLeaderIds = Array.from(
+    new Set(
+      ministeries
+        .map((ministry) => ministry.leader)
+        .filter((id): id is string => typeof id === "string" && ObjectId.isValid(id))
+    )
+  )
+
+  const leaderIds = uniqueLeaderIds.map((id) => new ObjectId(id))
 
   const leaders = leaderIds.length > 0 
     ? await db.collection("users").find({ _id: { $in: leaderIds } }).toArray()
@@ -35,10 +38,18 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const tenantDbName = await getTenantFromRequest(req)
+
+  if (!tenantDbName) {
+    return NextResponse.json(
+      { message: "Acceso denegado" },
+      { status: 401 }
+    )
+  }
+
   const { name, description, leader } = await req.json()
 
-  const client = await clientPromise
-  const db = client.db(dbName)
+  const db = await getTenantDbByName(tenantDbName)
 
   // verificar si ya existe
   const existingMinistry = await db.collection("ministeries").findOne({ name })

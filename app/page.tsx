@@ -15,7 +15,6 @@ export default function HomePage() {
           <h1 className="text-xl font-bold text-blue-700">
             Churches Planner
           </h1>
-
           <div className="hidden items-center gap-8 md:flex">
             <a href="#inicio" className="text-sm font-medium hover:text-blue-700">
               Inicio
@@ -30,9 +29,11 @@ export default function HomePage() {
               Contacto
             </a>
           </div>
-
           <a href="/login" className="hidden rounded-full bg-blue-700 px-5 py-2 text-sm font-semibold text-white transition hover:bg-blue-800 md:block">
             Iniciar sesión
+          </a>
+          <a href="/register" className="hidden rounded-full border bg-white px-5 py-2 text-sm font-semibold transition hover:bg-blue-800 md:block">
+            Registrarse
           </a>
 
           <button 
@@ -82,6 +83,13 @@ export default function HomePage() {
                 onClick={() => setIsMenuOpen(false)}
               >
                 Iniciar sesión
+              </a>
+              <a 
+                href="/register" 
+                className="rounded-full border border-slate-200 bg-white px-5 py-2 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Registrarse
               </a>
             </div>
           </div>

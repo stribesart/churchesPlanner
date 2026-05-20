@@ -24,7 +24,7 @@ type Props = {
   user: User | null
 }
 
-const menu = [
+export const menu = [
   {
     label: "Principal",
     items: [
@@ -44,13 +44,13 @@ const menu = [
         icon: Users,
       },
       {
-        name: "Usuarios",
+        name: "Usuarios", 
         href: "/users",
         icon: Users,
         roles: ["ADMIN"], // solo pastor
       },
     ],
-  },
+  }, 
   {
     label: "Operación",
     items: [
@@ -97,7 +97,7 @@ export default function Sidebar({ user }: Props) {
   const pathname = usePathname()
 
   return (
-    <aside className="w-64 bg-white border-r flex flex-col justify-between h-screen">
+    <aside role="navigation" aria-label="Sidebar" className="hidden md:flex md:flex-col w-64 bg-white border-r justify-between h-screen">
       
       {/* Top */}
       <div className="p-4 space-y-6">

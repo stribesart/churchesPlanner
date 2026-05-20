@@ -1,7 +1,8 @@
-// components/dashboard/StatsCard.jsx
-import { BarChart3 } from "lucide-react";
+// components/dashboard/StatsCard.tsx
+import { BarChart3 } from "lucide-react"
+import type { StatsCardProps } from "./types"
 
-export default function StatsCard({ title, value, icon: Icon = BarChart3 }) {
+export default function StatsCard({ title, value, icon: Icon = BarChart3 }: StatsCardProps) {
   return (
     <div className="rounded-2xl border bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-xl">
       <div className="flex items-start justify-between">
@@ -15,5 +16,5 @@ export default function StatsCard({ title, value, icon: Icon = BarChart3 }) {
       </div>
       <div className="mt-5 h-1 w-12 rounded-full bg-blue-700"></div>
     </div>
-  );
+  )
 }

@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server"
-import clientPromise from "@/lib/mongodb"
+import {
+  getGlobalEmailOwner,
+  getTenantDbByName,
+  getTenantFromRequest,
+  normalizeEmail,
+  removeUserFromTenantIndex,
+  updateUserTenantIndex,
+} from "@/lib/tenant"
 import { ObjectId } from "mongodb"
 import bcrypt from "bcryptjs"
 
@@ -9,14 +16,37 @@ export async function PUT(
 ) {
   try {
     const { id } = await params
+    const tenantDbName = await getTenantFromRequest(req)
+
+    if (!tenantDbName) {
+      return NextResponse.json(
+        { message: "Acceso denegado" },
+        { status: 401 }
+      )
+    }
+
     const { name, email, password, role } = await req.json()
+    const normalizedEmail = normalizeEmail(email || "")
+    const db = await getTenantDbByName(tenantDbName)
+    const userId = new ObjectId(id)
+    const existingEmailOwner = await getGlobalEmailOwner(normalizedEmail)
 
-    const client = await clientPromise
-    const db = client.db("churchesPlanner")
+    if (
+      existingEmailOwner &&
+      (
+        existingEmailOwner.dbName !== tenantDbName ||
+        existingEmailOwner.userId?.toString() !== userId.toString()
+      )
+    ) {
+      return NextResponse.json(
+        { message: "Ya existe una cuenta registrada con ese correo" },
+        { status: 409 }
+      )
+    }
 
-    const updateData: any = {
+    const updateData: { name?: string; email?: string; password?: string; role?: string } = {
       name,
-      email,
+      email: normalizedEmail,
       role,
     }
 
@@ -25,7 +55,7 @@ export async function PUT(
     }
 
     const result = await db.collection("users").updateOne(
-      { _id: new ObjectId(id) },
+      { _id: userId },
       { $set: updateData }
     )
 
@@ -35,6 +65,13 @@ export async function PUT(
         { status: 404 }
       )
     }
+
+    await updateUserTenantIndex({
+      dbName: tenantDbName,
+      userId,
+      email: normalizedEmail,
+      role,
+    })
 
     return NextResponse.json({ message: "Usuario actualizado" })
 
@@ -53,15 +90,20 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
+    const tenantDbName = await getTenantFromRequest(req)
 
-    console.log("ID a eliminar:", id)
+    if (!tenantDbName) {
+      return NextResponse.json(
+        { message: "Acceso denegado" },
+        { status: 401 }
+      )
+    }
 
-    const client = await clientPromise
-    const db = client.db("churchesPlanner")
+    const db = await getTenantDbByName(tenantDbName)
 
-    const result = await db.collection("users").deleteOne({
-      _id: new ObjectId(id),
-    })
+    const userId = new ObjectId(id)
+
+    const result = await db.collection("users").deleteOne({ _id: userId })
 
     if (result.deletedCount === 0) {
       return NextResponse.json(
@@ -69,6 +111,8 @@ export async function DELETE(
         { status: 404 }
       )
     }
+
+    await removeUserFromTenantIndex(tenantDbName, userId)
 
     return NextResponse.json({ message: "Usuario eliminado" })
 

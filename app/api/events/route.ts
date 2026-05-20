@@ -1,22 +1,34 @@
 import { NextResponse } from "next/server"
-import clientPromise from "@/lib/mongodb"
+import { getTenantFromRequest, getTenantDbByName } from "@/lib/tenant"
 
-const dbName = "churchesPlanner"
+export async function GET(req: Request) {
+  const tenantDbName = await getTenantFromRequest(req)
 
-export async function GET() {
-  const client = await clientPromise
-  const db = client.db(dbName)
+  if (!tenantDbName) {
+    return NextResponse.json(
+      { message: "Acceso denegado" },
+      { status: 401 }
+    )
+  }
 
+  const db = await getTenantDbByName(tenantDbName)
   const events = await db.collection("events").find().toArray()
 
   return NextResponse.json(events)
 }
 
 export async function POST(req: Request) {
-  const { name, description, date, startTime, endTime, location, organizer } = await req.json()
+  const tenantDbName = await getTenantFromRequest(req)
 
-  const client = await clientPromise
-  const db = client.db(dbName)
+  if (!tenantDbName) {
+    return NextResponse.json(
+      { message: "Acceso denegado" },
+      { status: 401 }
+    )
+  }
+
+  const { name, description, date, startTime, endTime, location, organizer } = await req.json()
+  const db = await getTenantDbByName(tenantDbName)
 
   const newEvent = {
     name,
@@ -41,8 +53,8 @@ export async function POST(req: Request) {
 
   await db.collection("announcements").insertOne(newAnnouncement)
 
-  return NextResponse.json({ 
+  return NextResponse.json({
     message: "Evento creado y anuncio generado",
-    eventId: eventResult.insertedId
+    eventId: eventResult.insertedId,
   })
 }

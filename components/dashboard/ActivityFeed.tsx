@@ -1,7 +1,12 @@
-// components/dashboard/ActivityFeed.jsx
-import { ArrowRight, Bell } from "lucide-react";
+// components/dashboard/ActivityFeed.tsx
+import { ArrowRight, Bell } from "lucide-react"
+import type { DashboardActivity } from "./types"
 
-export default function ActivityFeed({ activities }) {
+type Props = {
+  activities: DashboardActivity[]
+}
+
+export default function ActivityFeed({ activities }: Props) {
   return (
     <div className="rounded-2xl border bg-white p-6 shadow-sm">
       <div className="mb-6 flex items-start gap-3">
@@ -29,5 +34,5 @@ export default function ActivityFeed({ activities }) {
         </ul>
       )}
     </div>
-  );
+  )
 }

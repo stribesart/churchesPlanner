@@ -1,7 +1,12 @@
-// components/dashboard/AnnouncementsList.jsx
-import { Megaphone } from "lucide-react";
+// components/dashboard/AnnouncementsList.tsx
+import { Megaphone } from "lucide-react"
+import type { DashboardAnnouncement } from "./types"
 
-export default function AnnouncementsList({ announcements }) {
+type Props = {
+  announcements: DashboardAnnouncement[]
+}
+
+export default function AnnouncementsList({ announcements }: Props) {
   return (
     <div className="rounded-2xl border bg-white p-6 shadow-sm">
       <div className="mb-6 flex items-start gap-3">
@@ -33,5 +38,5 @@ export default function AnnouncementsList({ announcements }) {
         </div>
       )}
     </div>
-  );
+  )
 }

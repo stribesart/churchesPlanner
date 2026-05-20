@@ -1,7 +1,12 @@
-// components/dashboard/EventList.jsx
-import { CalendarDays } from "lucide-react";
+// components/dashboard/EventList.tsx
+import { CalendarDays } from "lucide-react"
+import type { DashboardEvent } from "./types"
 
-export default function EventList({ events }) {
+type Props = {
+  events: DashboardEvent[]
+}
+
+export default function EventList({ events }: Props) {
   return (
     <div className="rounded-2xl border bg-white p-6 shadow-sm">
       <div className="mb-6 flex items-start gap-3">
@@ -32,5 +37,5 @@ export default function EventList({ events }) {
         </ul>
       )}
     </div>
-  );
+  )
 }

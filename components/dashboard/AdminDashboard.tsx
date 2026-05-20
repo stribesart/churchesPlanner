@@ -1,10 +1,15 @@
-// components/dashboard/AdminDashboard.jsx
-import { CalendarDays, Sparkles, Target, Users } from "lucide-react";
-import StatsCard from "./StatsCard";
-import EventList from "./EventList";
-import ActivityFeed from "./ActivityFeed";
+// components/dashboard/AdminDashboard.tsx
+import { CalendarDays, Sparkles, Target, Users } from "lucide-react"
+import StatsCard from "./StatsCard"
+import EventList from "./EventList"
+import ActivityFeed from "./ActivityFeed"
+import type { DashboardData } from "./types"
 
-export default function AdminDashboard({ data }) {
+type Props = {
+  data: DashboardData
+}
+
+export default function AdminDashboard({ data }: Props) {
   return (
     <div className="space-y-8">
       <div className="rounded-3xl border bg-white p-6 shadow-xl sm:p-8">
@@ -39,5 +44,5 @@ export default function AdminDashboard({ data }) {
         <ActivityFeed activities={data.activities} />
       </div>
     </div>
-  );
+  )
 }

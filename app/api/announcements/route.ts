@@ -1,22 +1,34 @@
 import { NextResponse } from "next/server"
-import clientPromise from "@/lib/mongodb"
+import { getTenantFromRequest, getTenantDbByName } from "@/lib/tenant"
 
-const dbName = "churchesPlanner"
+export async function GET(req: Request) {
+  const tenantDbName = await getTenantFromRequest(req)
 
-export async function GET() {
-  const client = await clientPromise
-  const db = client.db(dbName)
+  if (!tenantDbName) {
+    return NextResponse.json(
+      { message: "Acceso denegado" },
+      { status: 401 }
+    )
+  }
 
+  const db = await getTenantDbByName(tenantDbName)
   const announcements = await db.collection("announcements").find().toArray()
 
   return NextResponse.json(announcements)
 }
 
 export async function POST(req: Request) {
-  const { title, content, author } = await req.json()
+  const tenantDbName = await getTenantFromRequest(req)
 
-  const client = await clientPromise
-  const db = client.db(dbName)
+  if (!tenantDbName) {
+    return NextResponse.json(
+      { message: "Acceso denegado" },
+      { status: 401 }
+    )
+  }
+
+  const { title, content, author } = await req.json()
+  const db = await getTenantDbByName(tenantDbName)
 
   const newAnnouncement = {
     title,

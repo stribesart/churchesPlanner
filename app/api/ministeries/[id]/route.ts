@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import clientPromise from "@/lib/mongodb"
+import { getTenantFromRequest, getTenantDbByName } from "@/lib/tenant"
 import { ObjectId } from "mongodb"
 
 export async function PUT(
@@ -8,10 +8,18 @@ export async function PUT(
 ) {
   try {
     const { id } = await params
+    const tenantDbName = await getTenantFromRequest(req)
+
+    if (!tenantDbName) {
+      return NextResponse.json(
+        { message: "Acceso denegado" },
+        { status: 401 }
+      )
+    }
+
     const { name, description, leader } = await req.json()
 
-    const client = await clientPromise
-    const db = client.db("churchesPlanner")
+    const db = await getTenantDbByName(tenantDbName)
 
     const updateData: { name?: string; description?: string; leader?: string } = {}
 
@@ -48,9 +56,16 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
+    const tenantDbName = await getTenantFromRequest(req)
 
-    const client = await clientPromise
-    const db = client.db("churchesPlanner")
+    if (!tenantDbName) {
+      return NextResponse.json(
+        { message: "Acceso denegado" },
+        { status: 401 }
+      )
+    }
+
+    const db = await getTenantDbByName(tenantDbName)
 
     const result = await db.collection("ministeries").deleteOne({
       _id: new ObjectId(id),

@@ -1,15 +1,25 @@
 
 import { NextResponse } from "next/server"
-import clientPromise from "@/lib/mongodb"
 import bcrypt from "bcryptjs"
+import { getTenantByEmail, getTenantDbByName, normalizeEmail } from "@/lib/tenant"
 
 export async function POST(req: Request) {
-
   const { email, password } = await req.json()
-  const client = await clientPromise
-  const db = client.db("churchesPlanner")
+  const normalizedEmail = normalizeEmail(email || "")
+  const tenant = await getTenantByEmail(normalizedEmail)
 
-  const user = await db.collection("users").findOne({ email })
+  if (!tenant || !tenant.dbName) {
+    return NextResponse.json(
+      { message: "Iglesia o usuario no encontrado" },
+      { status: 401 }
+    )
+  }
+
+  const tenantDb = await getTenantDbByName(tenant.dbName)
+  const user = await tenantDb.collection("users").findOne(
+    { email: normalizedEmail },
+    { collation: { locale: "en", strength: 2 } }
+  )
 
   if (!user) {
     return NextResponse.json(
@@ -30,6 +40,11 @@ export async function POST(req: Request) {
   const response = NextResponse.json({ message: "Login correcto" })
 
   response.cookies.set("session", user._id.toString(), {
+    httpOnly: true,
+    path: "/",
+  })
+
+  response.cookies.set("tenant", tenant.dbName, {
     httpOnly: true,
     path: "/",
   })
