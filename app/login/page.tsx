@@ -1,21 +1,47 @@
 "use client"
 
+import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useState } from "react"
+import { type FormEvent, useState } from "react"
+import { Eye, EyeOff } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field"
 
 export default function LoginPage() {
   const router = useRouter()
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handleLogin(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
+    setError("")
+
+    if (!email.trim() || !password) {
+      setError("Ingresa tu correo electrónico y contraseña.")
+      return
+    }
+
+    setLoading(true)
 
     const res = await fetch("/api/auth/login", {
       headers: {
@@ -26,75 +52,103 @@ export default function LoginPage() {
       body: JSON.stringify({ email, password }),
     })
 
+    setLoading(false)
+
     if (res.ok) {
       router.replace("/users")
       router.refresh()
     } else {
-      alert("Credenciales incorrectas")
+      setError("Credenciales incorrectas.")
     }
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 text-slate-900">
+    <main className="min-h-screen bg-background text-foreground">
       <section className="flex min-h-screen items-center justify-center px-6 py-12">
-        <Card className="w-full max-w-md rounded-3xl border bg-white/90 shadow-xl backdrop-blur">
-          <CardHeader className="space-y-3 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100">
-              <span className="text-2xl font-bold text-blue-700">CP</span>
+        <Card className="w-full sm:max-w-md">
+          <CardHeader>
+            <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <span className="text-lg font-semibold">CP</span>
             </div>
-
-            <div>
-              <CardTitle className="text-3xl font-bold text-slate-900">
-                Churches Planner
-              </CardTitle>
-              <p className="mt-2 text-sm text-slate-600">
-                Inicia sesión para administrar tu iglesia
-              </p>
-            </div>
+            <CardTitle>Churches Planner</CardTitle>
+            <CardDescription>
+              Inicia sesión para administrar tu iglesia.
+            </CardDescription>
           </CardHeader>
 
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-5">
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-slate-700">
-                  Correo electrónico
-                </Label>
-                <Input
-                  type="email"
-                  placeholder="correo@ejemplo.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="h-11 rounded-xl border-slate-200 bg-white"
-                />
-              </div>
+            <form id="login-form" onSubmit={handleLogin}>
+              <FieldGroup>
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="login-email">
+                    Correo electrónico
+                  </FieldLabel>
+                  <Input
+                    id="login-email"
+                    type="email"
+                    placeholder="correo@ejemplo.com"
+                    autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    aria-invalid={Boolean(error)}
+                  />
+                </Field>
 
-              <div className="space-y-2">
-                <Label className="text-sm font-semibold text-slate-700">
-                  Contraseña
-                </Label>
-                <Input
-                  type="password"
-                  placeholder="********"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="h-11 rounded-xl border-slate-200 bg-white"
-                />
-              </div>
-
-              <Button className="h-11 w-full rounded-full bg-blue-700 font-semibold text-white transition hover:bg-blue-800">
-                Iniciar sesión
-              </Button>
+                <Field data-invalid={Boolean(error)}>
+                  <FieldLabel htmlFor="login-password">Contraseña</FieldLabel>
+                  <div className="relative">
+                    <Input
+                      id="login-password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="********"
+                      autoComplete="current-password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="pr-10"
+                      aria-invalid={Boolean(error)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      className="absolute right-1 top-1/2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                      aria-label={
+                        showPassword
+                          ? "Ocultar contraseña"
+                          : "Mostrar contraseña"
+                      }
+                    >
+                      {showPassword ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                  <FieldDescription>
+                    Usa las credenciales de la cuenta administrativa de tu
+                    iglesia.
+                  </FieldDescription>
+                  <FieldError>{error}</FieldError>
+                </Field>
+              </FieldGroup>
             </form>
-
-            <div className="mt-4 text-center">
-              <a
-                href="/register"
-                className="inline-flex h-11 w-full items-center justify-center rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-              >
-                Registrarse
-              </a>
-            </div>
           </CardContent>
+
+          <CardFooter>
+            <Field className="w-full gap-3" data-orientation="horizontal">
+              <Button variant="outline" asChild>
+                <Link href="/register">Registrarse</Link>
+              </Button>
+              <Button
+                type="submit"
+                form="login-form"
+                className="flex-1"
+                disabled={loading}
+              >
+                {loading ? "Ingresando..." : "Iniciar sesión"}
+              </Button>
+            </Field>
+          </CardFooter>
         </Card>
       </section>
     </main>

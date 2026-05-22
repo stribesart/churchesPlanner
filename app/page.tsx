@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import { Menu, X } from 'lucide-react';
+import { TypographyH2, TypographyP } from '@/components/ui/typography';
 
 export default function HomePage() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -110,11 +111,11 @@ export default function HomePage() {
             Organiza tu iglesia desde una sola plataforma
           </h2>
 
-          <p className="mt-6 max-w-xl text-base leading-7 text-slate-600 sm:text-lg">
+          <TypographyP className="max-w-xl text-base text-slate-600 sm:text-lg">
             Churches Planner centraliza la administración de miembros,
             ministerios, eventos, inventario, aportaciones y reportes para
             mejorar la organización interna de la iglesia.
-          </p>
+          </TypographyP>
 
           <div className="mt-8 flex flex-col gap-4 sm:flex-row">
             <a href="/login" className="text-center rounded-full bg-blue-700 px-6 py-3 font-semibold text-white transition hover:bg-blue-800">
@@ -153,13 +154,13 @@ export default function HomePage() {
       <section id="modulos" className="bg-white px-6 py-20">
         <div className="mx-auto max-w-7xl">
           <div className="text-center">
-            <h3 className="text-3xl font-bold sm:text-4xl">
+            <TypographyH2 className="border-b-0 text-center">
               Módulos principales
-            </h3>
-            <p className="mx-auto mt-4 max-w-2xl text-slate-600">
+            </TypographyH2>
+            <TypographyP className="mx-auto max-w-2xl text-slate-600">
               Diseñado para cubrir las necesidades administrativas y
               organizacionales de una iglesia.
-            </p>
+            </TypographyP>
           </div>
 
           <div className="mt-12 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -188,14 +189,14 @@ export default function HomePage() {
       <section id="beneficios" className="px-6 py-20">
         <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-2">
           <div>
-            <h3 className="text-3xl font-bold sm:text-4xl">
+            <TypographyH2 className="border-b-0">
               Una mejor experiencia para líderes y administradores
-            </h3>
+            </TypographyH2>
 
-            <p className="mt-5 text-slate-600">
+            <TypographyP className="text-slate-600">
               El diseño está pensado para ser claro, rápido y fácil de usar,
               reduciendo la pérdida de información y mejorando la comunicación.
-            </p>
+            </TypographyP>
           </div>
 
           <div className="grid gap-4">

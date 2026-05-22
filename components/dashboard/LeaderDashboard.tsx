@@ -3,6 +3,7 @@ import { TrendingUp, UserRoundCheck, UsersRound } from "lucide-react"
 import StatsCard from "./StatsCard"
 import EventList from "./EventList"
 import type { DashboardData } from "./types"
+import { TypographyH1, TypographyP } from "@/components/ui/typography"
 
 type Props = {
   data: DashboardData
@@ -16,12 +17,12 @@ export default function LeaderDashboard({ data }: Props) {
           <UserRoundCheck className="h-4 w-4" />
           Liderazgo
         </p>
-        <h1 className="text-3xl font-bold text-slate-900 sm:text-4xl lg:text-5xl">
+        <TypographyH1 className="text-left text-slate-900">
           Mi Grupo
-        </h1>
-        <p className="mt-3 max-w-2xl text-slate-600">
+        </TypographyH1>
+        <TypographyP className="max-w-2xl text-slate-600">
           Administra tu grupo y sus miembros.
-        </p>
+        </TypographyP>
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">

@@ -4,6 +4,11 @@ import StatsCard from "./StatsCard"
 import EventList from "./EventList"
 import ActivityFeed from "./ActivityFeed"
 import type { DashboardData } from "./types"
+import {
+  TypographyH1,
+  TypographyP,
+  TypographySmall,
+} from "@/components/ui/typography"
 
 type Props = {
   data: DashboardData
@@ -19,15 +24,17 @@ export default function AdminDashboard({ data }: Props) {
               <CalendarDays className="h-4 w-4" />
               Panel administrativo
             </p>
-            <h1 className="text-3xl font-bold text-slate-900 sm:text-4xl lg:text-5xl">
+            <TypographyH1 className="text-left text-slate-900">
               Dashboard General
-            </h1>
-            <p className="mt-3 max-w-2xl text-slate-600">
+            </TypographyH1>
+            <TypographyP className="max-w-2xl text-slate-600">
               Bienvenido a tu panel de administración.
-            </p>
+            </TypographyP>
           </div>
           <div className="rounded-2xl bg-blue-700 px-5 py-4 text-white shadow-sm">
-            <p className="text-sm font-medium text-blue-100">Asistencia promedio</p>
+            <TypographySmall className="block text-blue-100">
+              Asistencia promedio
+            </TypographySmall>
             <p className="mt-1 text-3xl font-bold">{data.attendance}%</p>
           </div>
         </div>

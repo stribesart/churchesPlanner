@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import MinistryModal from "@/components/ministeries/ministry-modal"
 import { Button } from "@/components/ui/button"
+import { TypographyH1 } from "@/components/ui/typography"
 import {
   Table,
   TableBody,
@@ -65,9 +66,9 @@ export default function MinisteriesPage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-6">
+      <TypographyH1 className="mb-6 text-left">
         Ministerios
-      </h1>
+      </TypographyH1>
 
       <Button onClick={() => {
         setSelectedMinistry(null)

@@ -3,6 +3,11 @@ import { Megaphone, UsersRound } from "lucide-react"
 import EventList from "./EventList"
 import AnnouncementsList from "./AnnouncementsList"
 import type { DashboardData } from "./types"
+import {
+  TypographyH1,
+  TypographyP,
+  TypographySmall,
+} from "@/components/ui/typography"
 
 type Props = {
   data: DashboardData
@@ -16,18 +21,20 @@ export default function MemberDashboard({ data }: Props) {
           <Megaphone className="h-4 w-4" />
           Comunidad
         </p>
-        <h1 className="text-3xl font-bold text-slate-900 sm:text-4xl lg:text-5xl">
+        <TypographyH1 className="text-left text-slate-900">
           Bienvenido
-        </h1>
-        <p className="mt-3 max-w-2xl text-slate-600">
+        </TypographyH1>
+        <TypographyP className="max-w-2xl text-slate-600">
           Tu información y anuncios importantes.
-        </p>
+        </TypographyP>
       </div>
 
       <div className="rounded-2xl border bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:shadow-xl">
         <div className="flex items-center justify-between">
           <div>
-            <p className="mb-1 text-sm font-medium text-blue-700">Tu Grupo</p>
+            <TypographySmall className="mb-1 block text-blue-700">
+              Tu Grupo
+            </TypographySmall>
             <p className="text-2xl font-bold text-slate-900">{data.groupName}</p>
           </div>
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-700">

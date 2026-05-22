@@ -5,6 +5,7 @@ import AnnouncementModal from "@/components/announcements/announcement-modal"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { TypographyH1 } from "@/components/ui/typography"
 import {
   Table,
   TableBody,
@@ -96,9 +97,9 @@ export default function AnnouncementsPage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold mb-6">
+      <TypographyH1 className="mb-6 text-left">
         Anuncios
-      </h1>
+      </TypographyH1>
 
       <Button onClick={() => {
         setSelectedAnnouncement(null)
