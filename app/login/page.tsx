@@ -55,7 +55,7 @@ export default function LoginPage() {
     setLoading(false)
 
     if (res.ok) {
-      router.replace("/users")
+      router.replace("/dashboard")
       router.refresh()
     } else {
       setError("Credenciales incorrectas.")
