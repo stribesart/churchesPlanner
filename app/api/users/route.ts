@@ -1,15 +1,25 @@
 import { NextResponse } from "next/server"
+import { ObjectId } from "mongodb"
 import bcrypt from "bcryptjs"
 import {
   addUserToTenantIndex,
+  getCurrentTenantUser,
   getGlobalEmailOwner,
   getTenantDbByName,
-  getTenantFromRequest,
   normalizeEmail,
 } from "@/lib/tenant"
 
+function isLeaderRole(role: unknown) {
+  if (typeof role !== "string") return false
+
+  const normalizedRole = role.toLowerCase()
+
+  return normalizedRole === "lider" || normalizedRole === "líder"
+}
+
 export async function GET(req: Request) {
-  const tenantDbName = await getTenantFromRequest(req)
+  const currentUser = await getCurrentTenantUser(req)
+  const tenantDbName = currentUser?.tenantDbName
 
   if (!tenantDbName) {
     return NextResponse.json(
@@ -19,13 +29,26 @@ export async function GET(req: Request) {
   }
 
   const db = await getTenantDbByName(tenantDbName)
-  const users = await db.collection("users").find().toArray()
+  const user = currentUser.user
+  const userIsLeader = isLeaderRole(user.role)
+  const userMinistryId = typeof user.ministryId === "string" ? user.ministryId : null
+
+  const usersFilter =
+    userIsLeader
+      ? {
+          role: { $nin: ["pastor", "lider", "líder"] },
+          ...(userMinistryId ? { ministryId: userMinistryId } : { _id: user._id }),
+        }
+      : {}
+
+  const users = await db.collection("users").find(usersFilter).toArray()
 
   return NextResponse.json(users)
 }
 
 export async function POST(req: Request) {
-  const tenantDbName = await getTenantFromRequest(req)
+  const currentUser = await getCurrentTenantUser(req)
+  const tenantDbName = currentUser?.tenantDbName
 
   if (!tenantDbName) {
     return NextResponse.json(
@@ -34,9 +57,56 @@ export async function POST(req: Request) {
     )
   }
 
-  const { name, email, password, role } = await req.json()
-  const normalizedEmail = normalizeEmail(email || "")
+  const { name, email, password, role, ministryId, ministryRoleId } = await req.json()
+  const currentUserIsLeader = isLeaderRole(currentUser.user.role)
+  const currentMinistryId =
+    typeof currentUser.user.ministryId === "string"
+      ? currentUser.user.ministryId
+      : null
   const db = await getTenantDbByName(tenantDbName)
+
+  if (currentUserIsLeader && !currentMinistryId) {
+    return NextResponse.json(
+      { message: "El líder no tiene un ministerio asignado" },
+      { status: 400 }
+    )
+  }
+
+  if (currentUserIsLeader) {
+    if (
+      typeof ministryRoleId !== "string" ||
+      !ministryRoleId.trim() ||
+      !ObjectId.isValid(ministryRoleId)
+    ) {
+      return NextResponse.json(
+        { message: "Selecciona un rol del ministerio" },
+        { status: 400 }
+      )
+    }
+
+    const ministryRole = await db.collection("ministryRoles").findOne({
+      _id: new ObjectId(ministryRoleId),
+      ministryId: currentMinistryId,
+    })
+
+    if (!ministryRole) {
+      return NextResponse.json(
+        { message: "El rol no pertenece a tu ministerio" },
+        { status: 403 }
+      )
+    }
+  }
+
+  const normalizedRole =
+    currentUserIsLeader ? "miembro colaborador" : role
+  const assignedMinistryId =
+    currentUserIsLeader
+      ? currentMinistryId
+      : typeof ministryId === "string" && ministryId.trim()
+        ? ministryId
+        : null
+
+  const normalizedEmail = normalizeEmail(email || "")
 
   const existingEmailOwner = await getGlobalEmailOwner(normalizedEmail)
 
@@ -53,7 +123,12 @@ export async function POST(req: Request) {
     name,
     email: normalizedEmail,
     password: hashedPassword,
-    role,
+    role: normalizedRole,
+    ministryId: assignedMinistryId,
+    ministryRoleId:
+      typeof ministryRoleId === "string" && ministryRoleId.trim()
+        ? ministryRoleId
+        : null,
     createdAt: new Date(),
   }
 
@@ -62,7 +137,7 @@ export async function POST(req: Request) {
     email: normalizedEmail,
     dbName: tenantDbName,
     userId: userResult.insertedId,
-    role,
+    role: normalizedRole,
   })
 
   return NextResponse.json({ message: "Usuario creado" })

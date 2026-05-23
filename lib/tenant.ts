@@ -153,3 +153,26 @@ export async function getTenantFromRequest(req: Request | { headers: Headers }) 
 
   return tenantAccess?.dbName || null
 }
+
+export async function getCurrentTenantUser(req: Request | { headers: Headers }) {
+  const session = getCookieValue(req, "session")
+  const tenantDbName = await getTenantFromRequest(req)
+
+  if (!session || !tenantDbName || !ObjectId.isValid(session)) {
+    return null
+  }
+
+  const tenantDb = await getTenantDbByName(tenantDbName)
+  const user = await tenantDb.collection("users").findOne({
+    _id: new ObjectId(session),
+  })
+
+  if (!user) {
+    return null
+  }
+
+  return {
+    tenantDbName,
+    user,
+  }
+}

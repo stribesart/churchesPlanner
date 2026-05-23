@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import type { Leader } from "@/components/ministeries/leader-accordion"
 import MinistryModal from "@/components/ministeries/ministry-modal"
 import { Button } from "@/components/ui/button"
 import { TypographyH1 } from "@/components/ui/typography"
@@ -32,24 +33,62 @@ import { Pencil, Trash2 } from "lucide-react"
 
 type Ministry = {
   _id: string
+  ministryId?: string
   name: string
   description: string
   leader: string
 }
 
+type User = Leader & {
+  role?: string
+}
+
+function isLeaderUser(user: User) {
+  const role = typeof user.role === "string" ? user.role.toLowerCase() : ""
+
+  return role === "lider"
+}
+
 export default function MinisteriesPage() {
   const [ministeries, setMinisteries] = useState<Ministry[]>([])
+  const [leaders, setLeaders] = useState<Leader[]>([])
   const [open, setOpen] = useState(false)
   const [selectedMinistry, setSelectedMinistry] = useState<Ministry | null>(null)
 
   async function fetchMinisteries() {
-    const res = await fetch("/api/ministeries")
-    const data = await res.json()
-    setMinisteries(data.ministeries || data)
+    const [ministeriesRes, usersRes] = await Promise.all([
+      fetch("/api/ministeries"),
+      fetch("/api/users"),
+    ])
+    const ministeriesData = await ministeriesRes.json()
+    const usersData = await usersRes.json()
+
+    setMinisteries(ministeriesData.ministeries || ministeriesData)
+    setLeaders((Array.isArray(usersData) ? usersData : []).filter(isLeaderUser))
   }
 
   useEffect(() => {
-    fetchMinisteries()
+    let ignore = false
+
+    Promise.all([fetch("/api/ministeries"), fetch("/api/users")])
+      .then(async ([ministeriesRes, usersRes]) => {
+        const ministeriesData = await ministeriesRes.json()
+        const usersData = await usersRes.json()
+
+        return { ministeriesData, usersData }
+      })
+      .then(({ ministeriesData, usersData }) => {
+        if (!ignore) {
+          setMinisteries(ministeriesData.ministeries || ministeriesData)
+          setLeaders(
+            (Array.isArray(usersData) ? usersData : []).filter(isLeaderUser)
+          )
+        }
+      })
+
+    return () => {
+      ignore = true
+    }
   }, [])
 
   async function handleDelete(id: string) {
@@ -63,6 +102,13 @@ export default function MinisteriesPage() {
       alert("Error al eliminar")
     }
   }
+
+  function getLeaderName(leaderId: string) {
+    const leader = leaders.find((availableLeader) => availableLeader._id === leaderId)
+
+    return leader?.name || leader?.email || leaderId
+  }
+
 
   return (
     <div>
@@ -93,7 +139,7 @@ export default function MinisteriesPage() {
               <TableRow key={ministry._id}>
                 <TableCell>{ministry.name}</TableCell>
                 <TableCell>{ministry.description}</TableCell>
-                <TableCell>{ministry.leader}</TableCell>
+                <TableCell>{getLeaderName(ministry.leader)}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <TooltipProvider>
@@ -166,6 +212,7 @@ export default function MinisteriesPage() {
         open={open}
         onOpenChange={setOpen}
         ministry={selectedMinistry}
+        leaders={leaders}
         onSuccess={fetchMinisteries}
       />
     </div>

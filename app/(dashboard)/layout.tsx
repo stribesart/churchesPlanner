@@ -3,6 +3,7 @@
 import Sidebar from "@/components/layout/sidebar"
 import Topbar from "@/components/layout/topbar"
 import MobileBottomNav from "@/components/layout/mobile-bottom-nav"
+import { usePathname } from "next/navigation"
 
 import type { ReactNode } from "react"
 import { useEffect, useState } from "react"
@@ -20,6 +21,7 @@ type Props = {
 export default function DashboardLayout({ children }: Props) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const pathname = usePathname()
 
   useEffect(() => {
     async function fetchUser() {
@@ -42,6 +44,17 @@ export default function DashboardLayout({ children }: Props) {
 
     fetchUser()
   }, [])
+
+  useEffect(() => {
+    const restrictedForLeader = ["/ministeries", "/offerings", "/settings"]
+
+    if (
+      user?.role?.toLowerCase() === "lider" &&
+      restrictedForLeader.some((path) => pathname.startsWith(path))
+    ) {
+      window.location.href = "/dashboard"
+    }
+  }, [pathname, user])
 
   if (loading) return <div>Cargando...</div>
 

@@ -106,6 +106,7 @@ export async function POST(req: Request) {
     email: normalizedEmail,
     password: passwordHash,
     role,
+    ministryId: null,
     createdAt: new Date(),
     isActive: true,
   }

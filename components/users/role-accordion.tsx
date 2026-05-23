@@ -20,6 +20,7 @@ type UserRole = (typeof userRoles)[number]["value"]
 type RoleAccordionProps = {
   value: string
   onValueChange: (value: UserRole) => void
+  roles?: readonly UserRole[]
 }
 
 function normalizeUserRole(value: string): UserRole {
@@ -39,18 +40,24 @@ function getRoleLabel(value: string) {
   return userRoles.find((role) => role.value === normalized)?.label ?? "Miembro"
 }
 
-function RoleAccordion({ value, onValueChange }: RoleAccordionProps) {
+function RoleAccordion({ value, onValueChange, roles }: RoleAccordionProps) {
+  const availableRoles = roles
+    ? userRoles.filter((role) => roles.includes(role.value))
+    : userRoles
   const selectedRole = normalizeUserRole(value)
+  const selectedLabel =
+    availableRoles.find((role) => role.value === selectedRole)?.label ??
+    getRoleLabel(selectedRole)
 
   return (
     <Accordion type="single" collapsible className="rounded-lg border">
       <AccordionItem value="roles" className="border-b-0 px-3">
         <AccordionTrigger className="hover:no-underline">
-          {getRoleLabel(selectedRole)}
+          {selectedLabel}
         </AccordionTrigger>
         <AccordionContent className="pb-3">
           <div className="grid gap-2">
-            {userRoles.map((role) => (
+            {availableRoles.map((role) => (
               <button
                 key={role.value}
                 type="button"

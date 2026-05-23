@@ -32,6 +32,7 @@ export const menu = [
         name: "Dashboard",
         href: "/dashboard",
         icon: LayoutDashboard,
+        roles: ["pastor", "lider", "miembro colaborador", "miembro"],
       },
     ],
   },
@@ -42,12 +43,7 @@ export const menu = [
         name: "Miembros",
         href: "/users",
         icon: Users,
-      },
-      {
-        name: "Usuarios", 
-        href: "/users",
-        icon: Users,
-        roles: ["ADMIN"], // solo pastor
+        roles: ["pastor", "lider"],
       },
     ],
   }, 
@@ -58,16 +54,19 @@ export const menu = [
         name: "Ministerios",
         href: "/ministeries",
         icon: Church,
+        roles: ["pastor"],
       },
       {
         name: "Eventos",
         href: "/events",
         icon: Calendar,
+        roles: ["pastor", "lider"],
       },
       {
         name: "Anuncios",
         href: "/announcements",
         icon: Megaphone,
+        roles: ["pastor", "lider"],
       },
     ],
   },
@@ -78,6 +77,7 @@ export const menu = [
         name: "Ofrendas",
         href: "/offerings",
         icon: DollarSign,
+        roles: ["pastor"],
       },
     ],
   },
@@ -88,10 +88,22 @@ export const menu = [
         name: "Configuración",
         href: "/settings",
         icon: Settings,
+        roles: ["pastor"],
       },
     ],
   },
 ]
+
+export function canShowMenuItem(
+  item: { roles?: string[] },
+  userRole?: string
+) {
+  if (!item.roles) {
+    return true
+  }
+
+  return item.roles.includes(userRole?.toLowerCase() || "")
+}
 
 export default function Sidebar({ user }: Props) {
   const pathname = usePathname()
@@ -109,20 +121,23 @@ export default function Sidebar({ user }: Props) {
 
         {/* Menu */}
         <nav className="space-y-6">
-          {menu.map((section) => (
+          {menu.map((section) => {
+            const visibleItems = section.items.filter((item) =>
+              canShowMenuItem(item, user?.role)
+            )
+
+            if (visibleItems.length === 0) {
+              return null
+            }
+
+            return (
             <div key={section.label}>
               <p className="text-xs text-gray-400 mb-2 uppercase tracking-wide">
                 {section.label}
               </p>
 
               <div className="space-y-1">
-                {section.items.map((item) => {
-                  
-                  // Control por rol
-                  if (item.roles && !item.roles.includes(user?.role || "")) {
-                    return null
-                  }
-
+                {visibleItems.map((item) => {
                   const isActive = pathname === item.href
 
                   return (
@@ -144,7 +159,7 @@ export default function Sidebar({ user }: Props) {
                 })}
               </div>
             </div>
-          ))}
+          )})}
         </nav>
       </div>
 

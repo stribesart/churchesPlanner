@@ -1,6 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
+import MinistryRolesManager, {
+  type MinistryRole,
+} from "@/components/ministeries/ministry-roles-manager"
 import UserModal from "@/components/users/user-modal"
 import { Button } from "@/components/ui/button"
 import { TypographyH1 } from "@/components/ui/typography"
@@ -21,7 +24,7 @@ import {
   AlertDialogTitle,
   AlertDialogFooter,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+} from "@/components/ui/alert-dialog"
 import {
   Tooltip,
   TooltipContent,
@@ -37,21 +40,84 @@ type User = {
   name: string
   email: string
   role: string
+  ministryId?: string | null
+  ministryRoleId?: string | null
+}
+
+function isLeaderRole(role: string) {
+  const normalizedRole = role.toLowerCase()
+
+  return normalizedRole === "lider" || normalizedRole === "líder"
 }
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([])
   const [open, setOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [currentUserRole, setCurrentUserRole] = useState("")
+  const [ministryRoles, setMinistryRoles] = useState<MinistryRole[]>([])
+  const isLeader = isLeaderRole(currentUserRole)
 
-  useEffect(() => {
-    async function fetchUsers() {
-      const res = await fetch("/api/users")
-      const data = await res.json()
+  const refreshUsersPage = useCallback(async () => {
+    const [meRes, usersRes] = await Promise.all([
+      fetch("/api/auth/me"),
+      fetch("/api/users"),
+    ])
+
+    let nextCurrentUserRole = currentUserRole
+
+    if (meRes.ok) {
+      const meData = await meRes.json()
+      nextCurrentUserRole = meData.user?.role || ""
+      setCurrentUserRole(nextCurrentUserRole)
+    }
+
+    if (usersRes.ok) {
+      const data = await usersRes.json()
       setUsers(data)
     }
 
-    fetchUsers()
+    if (isLeaderRole(nextCurrentUserRole)) {
+      const rolesRes = await fetch("/api/ministry-roles")
+
+      if (rolesRes.ok) {
+        const rolesData = await rolesRes.json()
+        setMinistryRoles(rolesData.roles || [])
+      }
+    } else {
+      setMinistryRoles([])
+    }
+  }, [currentUserRole])
+
+  useEffect(() => {
+    let ignore = false
+
+    Promise.all([fetch("/api/auth/me"), fetch("/api/users")])
+      .then(async ([meRes, usersRes]) => {
+        const meData = meRes.ok ? await meRes.json() : null
+        const usersData = usersRes.ok ? await usersRes.json() : []
+        const nextCurrentUserRole = meData?.user?.role || ""
+        const rolesRes =
+          isLeaderRole(nextCurrentUserRole)
+            ? await fetch("/api/ministry-roles")
+            : null
+        const rolesData = rolesRes?.ok ? await rolesRes.json() : null
+
+        return { nextCurrentUserRole, usersData, rolesData }
+      })
+      .then(({ nextCurrentUserRole, usersData, rolesData }) => {
+        if (ignore) {
+          return
+        }
+
+        setCurrentUserRole(nextCurrentUserRole)
+        setUsers(usersData)
+        setMinistryRoles(rolesData?.roles || [])
+      })
+
+    return () => {
+      ignore = true
+    }
   }, [])
 
   async function handleDelete(id: string) {
@@ -64,15 +130,10 @@ export default function UsersPage() {
     })
 
     if (res.ok) {
-      fetchUsers() // refresca tabla
+      refreshUsersPage()
     } else {
       alert("Error al eliminar")
     }
-  }
-
-  async function fetchUsers() {
-    const res = await fetch("/api/users")
-    setUsers(await res.json())
   }
 
   return (
@@ -80,6 +141,18 @@ export default function UsersPage() {
       <TypographyH1 className="mb-6 text-left">
         Usuarios
       </TypographyH1>
+
+      {isLeader ? (
+        <section className="mb-6 space-y-3">
+          <div>
+            <h2 className="text-lg font-semibold">Roles del ministerio</h2>
+            <p className="text-sm text-muted-foreground">
+              Crea primero los roles que tus colaboradores podrán desempeñar.
+            </p>
+          </div>
+          <MinistryRolesManager onRolesChange={setMinistryRoles} />
+        </section>
+      ) : null}
 
       <Button onClick={() => {
         setSelectedUser(null)
@@ -95,6 +168,8 @@ export default function UsersPage() {
               <TableHead>Nombre</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Rol</TableHead>
+              {isLeader ? <TableHead>Rol ministerial</TableHead> : null}
+              <TableHead>Acciones</TableHead>
             </TableRow>
           </TableHeader>
 
@@ -114,6 +189,11 @@ export default function UsersPage() {
                     {user.role}
                   </Badge>
                 </TableCell>
+                {isLeader ? (
+                  <TableCell>
+                    {ministryRoles.find((role) => role._id === user.ministryRoleId)?.name || "-"}
+                  </TableCell>
+                ) : null}
                 <TableCell>
                   <div className="flex items-center gap-2">
 
@@ -187,7 +267,8 @@ export default function UsersPage() {
           open={open}
           onOpenChange={setOpen}
           user={selectedUser}
-          onSuccess={fetchUsers}
+          currentUserRole={currentUserRole}
+          onSuccess={refreshUsersPage}
         />
       </div>
     </div>

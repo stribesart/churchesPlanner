@@ -1,6 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useMemo, useState } from "react"
+import {
+  LeaderAccordion,
+  type Leader,
+} from "@/components/ministeries/leader-accordion"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -24,6 +28,7 @@ type Props = {
   onOpenChange: (open: boolean) => void
   onSuccess: () => void
   ministry?: Ministry | null
+  leaders: Leader[]
 }
 
 export default function MinistryModal({
@@ -31,27 +36,56 @@ export default function MinistryModal({
   onOpenChange,
   onSuccess,
   ministry,
+  leaders,
 }: Props) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <MinistryForm
+          key={ministry?._id ?? "new-ministry"}
+          ministry={ministry}
+          leaders={leaders}
+          onOpenChange={onOpenChange}
+          onSuccess={onSuccess}
+        />
+      </DialogContent>
+    </Dialog>
+  )
+}
 
+type MinistryFormProps = {
+  ministry?: Ministry | null
+  leaders: Leader[]
+  onOpenChange: (open: boolean) => void
+  onSuccess: () => void
+}
+
+function MinistryForm({
+  ministry,
+  leaders,
+  onOpenChange,
+  onSuccess,
+}: MinistryFormProps) {
   const isEdit = !!ministry
 
-  const [name, setName] = useState("")
-  const [description, setDescription] = useState("")
-  const [leader, setLeader] = useState("")
-
-  useEffect(() => {
-    if (ministry) {
-      setName(ministry.name)
-      setDescription(ministry.description)
-      setLeader(ministry.leader)
-    } else {
-      setName("")
-      setDescription("")
-      setLeader("")
-    }
-  }, [ministry])
+  const [name, setName] = useState(ministry?.name ?? "")
+  const [description, setDescription] = useState(ministry?.description ?? "")
+  const [leader, setLeader] = useState(ministry?.leader ?? "")
+  const availableLeaders = useMemo(
+    () =>
+      leaders.filter(
+        (availableLeader) =>
+          !availableLeader.ministryId || availableLeader._id === leader
+      ),
+    [leader, leaders]
+  )
 
   async function handleSubmit() {
+    if (!leader) {
+      alert("Selecciona un líder")
+      return
+    }
+
     const url = isEdit
       ? `/api/ministeries/${ministry?._id}`
       : "/api/ministeries"
@@ -75,39 +109,40 @@ export default function MinistryModal({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+    <>
+      <DialogHeader>
+        <DialogTitle>
+          {isEdit ? "Editar ministerio" : "Crear ministerio"}
+        </DialogTitle>
+      </DialogHeader>
 
-        <DialogHeader>
-          <DialogTitle>
-            {isEdit ? "Editar ministerio" : "Crear ministerio"}
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-4">
-
-          <div>
-            <Label>Nombre</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
-
-          <div>
-            <Label>Descripción</Label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} />
-          </div>
-
-          <div>
-            <Label>Líder</Label>
-            <Input value={leader} onChange={(e) => setLeader(e.target.value)} />
-          </div>
-
-          <Button onClick={handleSubmit} className="w-full">
-            {isEdit ? "Actualizar" : "Crear"}
-          </Button>
-
+      <div className="space-y-4">
+        <div>
+          <Label>Nombre</Label>
+          <Input value={name} onChange={(e) => setName(e.target.value)} />
         </div>
 
-      </DialogContent>
-    </Dialog>
+        <div>
+          <Label>Descripción</Label>
+          <Textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <Label>Líder</Label>
+          <LeaderAccordion
+            leaders={availableLeaders}
+            value={leader}
+            onValueChange={setLeader}
+          />
+        </div>
+
+        <Button onClick={handleSubmit} className="w-full">
+          {isEdit ? "Actualizar" : "Crear"}
+        </Button>
+      </div>
+    </>
   )
 }

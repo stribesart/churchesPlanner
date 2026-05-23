@@ -1,8 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { menu } from "./sidebar"
-import { LayoutDashboard, Users, Calendar, Megaphone, Settings, X, Menu as MenuIcon } from "lucide-react"
+import { canShowMenuItem, menu } from "./sidebar"
+import { LayoutDashboard, Users, Calendar, Megaphone, X, Menu as MenuIcon } from "lucide-react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
@@ -22,12 +22,11 @@ export default function MobileBottomNav({ user }: Props) {
 
   // Simplified primary actions for bottom nav
   const primary = [
-    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-    { name: "Miembros", href: "/users", icon: Users },
-    { name: "Eventos", href: "/events", icon: Calendar },
-    { name: "Anuncios", href: "/announcements", icon: Megaphone },
-    { name: "Ajustes", href: "/settings", icon: Settings },
-  ]
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: ["pastor", "lider", "miembro colaborador", "miembro"] },
+    { name: "Miembros", href: "/users", icon: Users, roles: ["pastor", "lider"] },
+    { name: "Eventos", href: "/events", icon: Calendar, roles: ["pastor", "lider"] },
+    { name: "Anuncios", href: "/announcements", icon: Megaphone, roles: ["pastor", "lider"] },
+  ].filter((item) => canShowMenuItem(item, user?.role))
 
   return (
     <>
@@ -71,12 +70,20 @@ export default function MobileBottomNav({ user }: Props) {
             </div>
 
             <nav className="mt-6 space-y-4">
-              {menu.map((section) => (
+              {menu.map((section) => {
+                const visibleItems = section.items.filter((item) =>
+                  canShowMenuItem(item, user?.role)
+                )
+
+                if (visibleItems.length === 0) {
+                  return null
+                }
+
+                return (
                 <div key={section.label}>
                   <p className="text-xs text-gray-400 mb-2 uppercase tracking-wide">{section.label}</p>
                   <div className="space-y-1">
-                    {section.items.map((item) => {
-                      if (item.roles && !item.roles.includes(user?.role || "")) return null
+                    {visibleItems.map((item) => {
                       const isActive = pathname === item.href
                       const Icon = item.icon
 
@@ -94,7 +101,7 @@ export default function MobileBottomNav({ user }: Props) {
                     })}
                   </div>
                 </div>
-              ))}
+              )})}
             </nav>
           </div>
         </div>
