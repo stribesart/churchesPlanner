@@ -14,6 +14,7 @@ type Props = {
   data: DashboardData
 }
 
+
 export default function AdminDashboard({ data }: Props) {
   return (
     <div className="space-y-8">
@@ -21,8 +22,7 @@ export default function AdminDashboard({ data }: Props) {
         <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div>
             <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
-              <CalendarDays className="h-4 w-4" />
-              Panel administrativo
+
             </p>
             <TypographyH1 className="text-left text-slate-900">
               Dashboard General

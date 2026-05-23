@@ -1,5 +1,6 @@
 "use client"
 
+import type * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 
@@ -11,8 +12,21 @@ import {
   Megaphone,
   DollarSign,
   Settings,
-  LogOut,
 } from "lucide-react"
+import { SidebarUser } from "@/components/layout/sidebar-user"
+import {
+  Sidebar as ShadcnSidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
+} from "@/components/ui/sidebar"
 
 type User = {
   name: string
@@ -20,7 +34,7 @@ type User = {
   email: string
 }
 
-type Props = {
+type Props = React.ComponentProps<typeof ShadcnSidebar> & {
   user: User | null
 }
 
@@ -102,94 +116,81 @@ export function canShowMenuItem(
     return true
   }
 
-  return item.roles.includes(userRole?.toLowerCase() || "")
+  const normalizedUserRole = normalizeRole(userRole)
+
+  return item.roles.some((role) => normalizeRole(role) === normalizedUserRole)
 }
 
-export default function Sidebar({ user }: Props) {
+function normalizeRole(role?: string) {
+  return (role || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+}
+
+export default function Sidebar({ user, ...props }: Props) {
   const pathname = usePathname()
 
   return (
-    <aside role="navigation" aria-label="Sidebar" className="hidden md:flex md:flex-col w-64 bg-white border-r justify-between h-screen">
-      
-      {/* Top */}
-      <div className="p-4 space-y-6">
-        
-        {/* Logo */}
-        <div className="text-xl font-bold">
-          ERP Iglesia
-        </div>
+    <ShadcnSidebar collapsible="icon" {...props}>
+      <SidebarHeader>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              asChild
+              className="data-[slot=sidebar-menu-button]"
+            >
+              <span className="text-base font-semibold">Church Planner</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
 
-        {/* Menu */}
-        <nav className="space-y-6">
-          {menu.map((section) => {
-            const visibleItems = section.items.filter((item) =>
-              canShowMenuItem(item, user?.role)
-            )
+      <SidebarContent>
+        {menu.map((section) => {
+          const visibleItems = section.items.filter((item) =>
+            canShowMenuItem(item, user?.role)
+          )
 
-            if (visibleItems.length === 0) {
-              return null
-            }
+          if (visibleItems.length === 0) {
+            return null
+          }
 
-            return (
-            <div key={section.label}>
-              <p className="text-xs text-gray-400 mb-2 uppercase tracking-wide">
-                {section.label}
-              </p>
-
-              <div className="space-y-1">
+          return (
+            <SidebarGroup key={section.label}>
+              <SidebarGroupLabel>{section.label}</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
                 {visibleItems.map((item) => {
                   const isActive = pathname === item.href
+                  const Icon = item.icon
 
                   return (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-md text-sm transition
-                        ${
-                          isActive
-                            ? "bg-black text-white"
-                            : "text-gray-600 hover:bg-gray-100"
-                        }
-                      `}
-                    >
-                      <item.icon className="w-4 h-4" />
-                      {item.name}
-                    </Link>
+                    <SidebarMenuItem key={item.name}>
+                      <SidebarMenuButton
+                        asChild
+                        isActive={isActive}
+                        tooltip={item.name}
+                      >
+                        <Link href={item.href}>
+                          <Icon />
+                          <span>{item.name}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
                   )
                 })}
-              </div>
-            </div>
-          )})}
-        </nav>
-      </div>
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          )
+        })}
+      </SidebarContent>
 
-      {/* Bottom User */}
-      <div className="p-4 border-t">
-        <div className="flex items-center gap-3">
-          
-          {/* Avatar */}
-          <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-sm font-semibold">
-            {user?.name?.charAt(0) || "U"}
-          </div>
-
-          <div className="flex-1">
-            <p className="text-sm font-medium">{user?.name}</p>
-            <p className="text-xs text-gray-500">{user?.role}</p>
-          </div>
-        </div>
-
-        {/* Logout */}
-        <button
-          className="mt-4 flex items-center gap-2 text-sm text-red-500 hover:underline"
-          onClick={() => {
-            window.location.href = "/login"
-          }}
-        >
-          <LogOut className="w-4 h-4" />
-          Cerrar sesión
-        </button>
-      </div>
-
-    </aside>
+      <SidebarFooter>
+        <SidebarUser user={user} />
+      </SidebarFooter>
+      <SidebarRail />
+    </ShadcnSidebar>
   )
 }

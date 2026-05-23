@@ -3,6 +3,7 @@
 import Sidebar from "@/components/layout/sidebar"
 import Topbar from "@/components/layout/topbar"
 import MobileBottomNav from "@/components/layout/mobile-bottom-nav"
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { usePathname } from "next/navigation"
 
 import type { ReactNode } from "react"
@@ -47,9 +48,13 @@ export default function DashboardLayout({ children }: Props) {
 
   useEffect(() => {
     const restrictedForLeader = ["/ministeries", "/offerings", "/settings"]
+    const normalizedRole = user?.role
+      ?.toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
 
     if (
-      user?.role?.toLowerCase() === "lider" &&
+      normalizedRole === "lider" &&
       restrictedForLeader.some((path) => pathname.startsWith(path))
     ) {
       window.location.href = "/dashboard"
@@ -59,12 +64,10 @@ export default function DashboardLayout({ children }: Props) {
   if (loading) return <div>Cargando...</div>
 
   return (
-    <div className="flex h-screen">
-
+    <SidebarProvider>
       <Sidebar user={user} />
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-
+      <SidebarInset>
         <Topbar user={user} />
 
         <main className="p-6 bg-gray-50 flex-1 overflow-y-auto">
@@ -72,9 +75,7 @@ export default function DashboardLayout({ children }: Props) {
         </main>
 
         <MobileBottomNav user={user} />
-
-      </div>
-
-    </div>
+      </SidebarInset>
+    </SidebarProvider>
   )
 }
