@@ -18,35 +18,98 @@ function generateTenantKey() {
   return randomBytes(3).toString("hex")
 }
 
-function getTodayInputDate() {
-  return new Date().toISOString().split("T")[0]
+const serviceDayIndexes: Record<string, number> = {
+  domingo: 0,
+  lunes: 1,
+  martes: 2,
+  miercoles: 3,
+  jueves: 4,
+  viernes: 5,
+  sabado: 6,
+}
+const validServiceFrequencies = new Set(["weekly", "biweekly", "monthly"])
+
+function normalizeText(value: string) {
+  return value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+}
+
+function getNextServiceDate(serviceDay: string) {
+  const normalizedServiceDay = normalizeText(serviceDay)
+  const targetDay = serviceDayIndexes[normalizedServiceDay]
+
+  if (targetDay === undefined) {
+    return null
+  }
+
+  const date = new Date()
+  const daysUntilService = (targetDay - date.getDay() + 7) % 7
+
+  date.setDate(date.getDate() + daysUntilService)
+
+  return date.toISOString().split("T")[0]
+}
+
+function isValidTime(value: unknown) {
+  return typeof value === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(value)
+}
+
+function addHoursToTime(time: string, hoursToAdd: number) {
+  const [hours, minutes] = time.split(":").map(Number)
+  const nextHours = (hours + hoursToAdd) % 24
+
+  return `${nextHours.toString().padStart(2, "0")}:${minutes
+    .toString()
+    .padStart(2, "0")}`
 }
 
 export async function POST(req: Request) {
   const {
     churchName,
-    registrantName,
-    contactNumber,
-    email,
+    location,
+    generalServiceDay,
+    generalServiceStartTime,
+    serviceFrequency,
+    adminName,
+    adminEmail,
     password,
     age,
-    role,
-    description,
   } = await req.json()
-  const normalizedEmail = normalizeEmail(email || "")
+  const normalizedAdminEmail = normalizeEmail(adminEmail || "")
 
   if (
     !churchName ||
-    !registrantName ||
-    !contactNumber ||
-    !normalizedEmail ||
+    !generalServiceDay ||
+    !generalServiceStartTime ||
+    !adminName ||
+    !normalizedAdminEmail ||
     !password ||
-    !age ||
-    !role ||
-    !description
+    !age
   ) {
     return NextResponse.json(
       { message: "Todos los campos son obligatorios" },
+      { status: 400 }
+    )
+  }
+
+  if (!isValidTime(generalServiceStartTime)) {
+    return NextResponse.json(
+      { message: "Selecciona una hora de servicio válida" },
+      { status: 400 }
+    )
+  }
+
+  const normalizedServiceFrequency =
+    typeof serviceFrequency === "string" && serviceFrequency.trim()
+      ? serviceFrequency
+      : "weekly"
+
+  if (!validServiceFrequencies.has(normalizedServiceFrequency)) {
+    return NextResponse.json(
+      { message: "Selecciona una frecuencia de servicio válida" },
       { status: 400 }
     )
   }
@@ -57,6 +120,15 @@ export async function POST(req: Request) {
         message:
           "La contraseña debe tener mínimo 8 caracteres, incluir una mayúscula, letras y un número",
       },
+      { status: 400 }
+    )
+  }
+
+  const firstServiceDate = getNextServiceDate(generalServiceDay)
+
+  if (!firstServiceDate) {
+    return NextResponse.json(
+      { message: "Selecciona un día de servicio válido" },
       { status: 400 }
     )
   }
@@ -72,7 +144,7 @@ export async function POST(req: Request) {
   const client = await clientPromise
   const globalDb = client.db("churchesPlanner")
 
-  const existingEmailOwner = await getGlobalEmailOwner(normalizedEmail)
+  const existingEmailOwner = await getGlobalEmailOwner(normalizedAdminEmail)
 
   if (existingEmailOwner) {
     return NextResponse.json(
@@ -96,16 +168,18 @@ export async function POST(req: Request) {
   const dbName = `${normalizeDbName(churchName)}_db_${tenantKey}`
   const tenantDb = client.db(dbName)
   const passwordHash = await bcrypt.hash(password, 10)
-  const adminName = registrantName.trim()
+  const trimmedAdminName = adminName.trim()
+  const adminRole = "Administrador"
 
   const user = {
-    name: adminName,
-    realName: adminName,
-    displayName: adminName.split(" ")[0] || adminName,
+    name: trimmedAdminName,
+    realName: trimmedAdminName,
+    displayName: trimmedAdminName.split(" ")[0] || trimmedAdminName,
     age: ageNumber,
-    email: normalizedEmail,
+    email: normalizedAdminEmail,
     password: passwordHash,
-    role,
+    role: adminRole,
+    isSuperUser: true,
     ministryId: null,
     createdAt: new Date(),
     isActive: true,
@@ -115,12 +189,12 @@ export async function POST(req: Request) {
   const organizer = userResult.insertedId.toString()
 
   const defaultEvent = {
-    name: "Servicio dominical",
+    name: "Servicio general",
     description: `Primer servicio de ${churchName}`,
-    date: getTodayInputDate(),
-    startTime: "10:00",
-    endTime: "12:00",
-    location: "Iglesia principal",
+    date: firstServiceDate,
+    startTime: generalServiceStartTime,
+    endTime: addHoursToTime(generalServiceStartTime, 2),
+    location: typeof location === "string" && location.trim() ? location.trim() : "Iglesia principal",
     organizer,
     isActive: true,
     createdAt: new Date(),
@@ -130,7 +204,7 @@ export async function POST(req: Request) {
 
   const announcement = {
     title: `Primer servicio: ${defaultEvent.name}`,
-    content: `La iglesia ${churchName} tiene su primer servicio el ${defaultEvent.date} a las ${defaultEvent.startTime}.`,
+    content: `La iglesia ${churchName} tiene su primer servicio general el ${defaultEvent.date} a las ${defaultEvent.startTime}.`,
     author: organizer,
     eventId: eventResult.insertedId,
     isActive: true,
@@ -141,21 +215,26 @@ export async function POST(req: Request) {
 
   await globalDb.collection("churches").insertOne({
     churchName,
-    contactNumber,
-    email: normalizedEmail,
+    location: typeof location === "string" ? location.trim() : "",
+    generalServiceDay,
+    generalServiceStartTime,
+    serviceFrequency: normalizedServiceFrequency,
     dbName,
     tenantKey,
+    ownerUserId: userResult.insertedId,
+    superUserId: userResult.insertedId,
     adminUserId: userResult.insertedId,
     createdAt: new Date(),
   })
 
   await globalDb.collection("userIndex").insertOne({
-    email: normalizedEmail,
+    email: normalizedAdminEmail,
     dbName,
     tenantKey,
     churchName,
     userId: userResult.insertedId,
-    role,
+    role: adminRole,
+    isSuperUser: true,
     createdAt: new Date(),
   })
 
@@ -165,7 +244,7 @@ export async function POST(req: Request) {
       tenant: {
         dbName,
         churchName,
-        email: normalizedEmail,
+        adminEmail: normalizedAdminEmail,
       },
     },
     { status: 201 }

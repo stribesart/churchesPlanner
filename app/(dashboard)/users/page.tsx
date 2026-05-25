@@ -26,12 +26,19 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { Pencil, Trash2 } from "lucide-react"
+import { Copy, LinkIcon, Pencil, Trash2 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
 
@@ -56,6 +63,10 @@ export default function UsersPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
   const [currentUserRole, setCurrentUserRole] = useState("")
   const [ministryRoles, setMinistryRoles] = useState<MinistryRole[]>([])
+  const [inviteOpen, setInviteOpen] = useState(false)
+  const [inviteUrl, setInviteUrl] = useState("")
+  const [inviteError, setInviteError] = useState("")
+  const [inviteLoading, setInviteLoading] = useState(false)
   const isLeader = isLeaderRole(currentUserRole)
 
   const refreshUsersPage = useCallback(async () => {
@@ -136,6 +147,32 @@ export default function UsersPage() {
     }
   }
 
+  async function handleCreateInvite() {
+    setInviteLoading(true)
+    setInviteError("")
+    setInviteUrl("")
+
+    const res = await fetch("/api/invites", {
+      method: "POST",
+    })
+    const data = await res.json()
+
+    setInviteLoading(false)
+
+    if (res.ok) {
+      setInviteUrl(data.inviteUrl)
+      return
+    }
+
+    setInviteError(data?.message || "Error al generar la invitación")
+  }
+
+  async function handleCopyInvite() {
+    if (!inviteUrl) return
+
+    await navigator.clipboard.writeText(inviteUrl)
+  }
+
   return (
     <div>
       <TypographyH1 className="mb-6 text-left">
@@ -154,12 +191,25 @@ export default function UsersPage() {
         </section>
       ) : null}
 
-      <Button onClick={() => {
-        setSelectedUser(null)
-        setOpen(true)
-      }}>
-        + Nuevo usuario
-      </Button>
+      <div className="flex flex-wrap gap-2">
+        <Button onClick={() => {
+          setSelectedUser(null)
+          setOpen(true)
+        }}>
+          + Nuevo usuario
+        </Button>
+        <Button
+          variant="outline"
+          onClick={() => {
+            setInviteOpen(true)
+            setInviteError("")
+            setInviteUrl("")
+          }}
+        >
+          <LinkIcon className="h-4 w-4" />
+          Crear link
+        </Button>
+      </div>
 
       <div className="bg-white rounded-lg border mt-4">
         <Table>
@@ -271,6 +321,44 @@ export default function UsersPage() {
           onSuccess={refreshUsersPage}
         />
       </div>
+
+      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Link de registro</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Genera un enlace de un solo uso para registrar un miembro en esta iglesia. El enlace vence en 12 horas.
+            </p>
+
+            {inviteUrl ? (
+              <div className="space-y-2">
+                <Input value={inviteUrl} readOnly />
+                <Button className="w-full" onClick={handleCopyInvite}>
+                  <Copy className="h-4 w-4" />
+                  Copiar link
+                </Button>
+              </div>
+            ) : null}
+
+            {inviteError ? (
+              <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                {inviteError}
+              </div>
+            ) : null}
+
+            <Button
+              className="w-full"
+              onClick={handleCreateInvite}
+              disabled={inviteLoading}
+            >
+              {inviteLoading ? "Generando..." : "Generar link"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

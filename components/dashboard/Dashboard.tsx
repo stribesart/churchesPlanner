@@ -15,7 +15,11 @@ function normalizeDashboardRole(role: DashboardRole) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
 
-  if (normalizedRole === "admin" || normalizedRole === "pastor") {
+  if (
+    normalizedRole === "admin" ||
+    normalizedRole === "administrador" ||
+    normalizedRole === "pastor"
+  ) {
     return "admin"
   }
 

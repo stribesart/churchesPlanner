@@ -60,6 +60,28 @@ export async function getGlobalEmailOwner(email: string) {
   return null
 }
 
+export async function getUserEmailOwner(email: string) {
+  const client = await clientPromise
+  const globalDb = client.db("churchesPlanner")
+  const normalizedEmail = normalizeEmail(email)
+
+  const userIndexOwner = await globalDb.collection("userIndex").findOne(
+    { email: normalizedEmail },
+    { collation: { locale: "en", strength: 2 } }
+  )
+
+  if (!userIndexOwner) {
+    return null
+  }
+
+  return {
+    source: "userIndex",
+    dbName: userIndexOwner.dbName,
+    userId: userIndexOwner.userId,
+    email: userIndexOwner.email,
+  }
+}
+
 export async function getTenantDbByName(dbName: string): Promise<Db> {
   const client = await clientPromise
   return client.db(dbName)

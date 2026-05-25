@@ -19,6 +19,7 @@ export type DashboardAnnouncement = {
   title: string
   content: string
   author: string
+  authorName?: string
   createdAt?: string
 }
 

@@ -8,7 +8,14 @@ function normalizeRoleName(name: string) {
 }
 
 function getCurrentRole(role: unknown) {
-  return typeof role === "string" ? role.toLowerCase() : ""
+  if (typeof role !== "string") return ""
+
+  const normalizedRole = role
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+
+  return normalizedRole === "administrador" ? "pastor" : normalizedRole
 }
 
 function getCurrentMinistryId(ministryId: unknown) {

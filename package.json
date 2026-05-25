@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "load:test": "node scripts/load-test.mjs",
+    "cleanup:tenant": "node scripts/cleanup-orphan-tenant.mjs"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

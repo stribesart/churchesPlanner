@@ -122,10 +122,16 @@ export function canShowMenuItem(
 }
 
 function normalizeRole(role?: string) {
-  return (role || "")
+  const normalizedRole = (role || "")
     .toLowerCase()
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
+
+  if (normalizedRole === "administrador") {
+    return "pastor"
+  }
+
+  return normalizedRole
 }
 
 export default function Sidebar({ user, ...props }: Props) {

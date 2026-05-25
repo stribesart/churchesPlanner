@@ -37,6 +37,7 @@ type Announcement = {
   title: string
   content: string
   author: string
+  authorName?: string
   createdAt?: string
 }
 
@@ -166,7 +167,7 @@ export default function AnnouncementsPage() {
                 <TableRow key={announcement._id}>
                   <TableCell>{announcement.title}</TableCell>
                   <TableCell>{announcement.content}</TableCell>
-                  <TableCell>{announcement.author}</TableCell>
+                  <TableCell>{announcement.authorName || "Sistema"}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <TooltipProvider>

@@ -32,7 +32,9 @@ export default function AnnouncementsList({ announcements }: Props) {
             >
               <h3 className="font-semibold text-slate-900">{announcement.title}</h3>
               <p className="text-sm text-slate-700 mt-2">{announcement.content}</p>
-              <p className="mt-3 text-xs font-medium text-blue-700">Por: {announcement.author}</p>
+              <p className="mt-3 text-xs font-medium text-blue-700">
+                Por: {announcement.authorName || "Sistema"}
+              </p>
             </div>
           ))}
         </div>

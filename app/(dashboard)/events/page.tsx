@@ -41,6 +41,7 @@ type Event = {
   endTime: string
   location: string
   organizer: string
+  organizerName?: string
 }
 
 type User = {
@@ -172,7 +173,7 @@ export default function EventsPage() {
                   <TableCell>{event.date}</TableCell>
                   <TableCell>{`${event.startTime} - ${event.endTime}`}</TableCell>
                   <TableCell>{event.location}</TableCell>
-                  <TableCell>{event.organizer}</TableCell>
+                  <TableCell>{event.organizerName || "Sin organizador"}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <TooltipProvider>
