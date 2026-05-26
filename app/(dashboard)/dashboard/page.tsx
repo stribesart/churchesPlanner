@@ -18,6 +18,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { OfferingsChart } from "@/components/dashboard/offerings-chart"
 import { UsersCreatedChart } from "@/components/dashboard/users-created-chart"
 
 type User = {
@@ -42,12 +43,20 @@ type Announcement = {
   _id: string
 }
 
+type Offering = {
+  _id: string
+  amount: number
+  currency?: string
+  createdAt?: string
+}
+
 type DashboardState = {
   user: User | null
   church: Church | null
   users: User[]
   events: Event[]
   announcements: Announcement[]
+  offerings: Offering[]
 }
 
 function formatRole(role?: string) {
@@ -84,6 +93,7 @@ export default function DashboardPage() {
     users: [],
     events: [],
     announcements: [],
+    offerings: [],
   })
   const [loading, setLoading] = useState(true)
 
@@ -105,6 +115,12 @@ export default function DashboardPage() {
         const announcementsData = announcementsRes.ok
           ? await announcementsRes.json()
           : []
+        const canFetchOfferings = isAdminDashboardRole(meData?.user?.role)
+        const offeringsData = canFetchOfferings
+          ? await fetch("/api/offerings").then((res) =>
+              res.ok ? res.json() : { offerings: [] }
+            )
+          : { offerings: [] }
 
         if (ignore) {
           return
@@ -117,6 +133,9 @@ export default function DashboardPage() {
           events: Array.isArray(eventsData) ? eventsData : [],
           announcements: Array.isArray(announcementsData)
             ? announcementsData
+            : [],
+          offerings: Array.isArray(offeringsData.offerings)
+            ? offeringsData.offerings
             : [],
         })
       } catch (error) {
@@ -169,7 +188,7 @@ export default function DashboardPage() {
   return (
     <div className="@container/main space-y-6">
       <section className="space-y-2">
-        <h1 className="text-3xl font-semibold tracking-tight text-foreground">
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
           {churchName}
         </h1>
         <p className="text-muted-foreground">
@@ -272,12 +291,16 @@ export default function DashboardPage() {
       </section>
 
       {canSeeAnalytics ? (
-        <Tabs defaultValue="users" className="gap-4">
-          <TabsList>
+        <Tabs defaultValue="users" className="w-full gap-4">
+          <TabsList className="w-full sm:w-fit">
             <TabsTrigger value="users">Usuarios</TabsTrigger>
+            <TabsTrigger value="offerings">Ofrendas</TabsTrigger>
           </TabsList>
           <TabsContent value="users">
             <UsersCreatedChart users={data.users} />
+          </TabsContent>
+          <TabsContent value="offerings">
+            <OfferingsChart offerings={data.offerings} />
           </TabsContent>
         </Tabs>
       ) : null}
