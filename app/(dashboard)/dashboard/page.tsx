@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import {
   Card,
   CardAction,
+  CardContent,
   CardDescription,
   CardFooter,
   CardHeader,
@@ -36,11 +37,19 @@ type Church = {
 
 type Event = {
   _id: string
+  name?: string
+  description?: string
   date?: string
+  startTime?: string
+  location?: string
 }
 
 type Announcement = {
   _id: string
+  title?: string
+  content?: string
+  authorName?: string
+  createdAt?: string
 }
 
 type Offering = {
@@ -84,6 +93,34 @@ function isUpcomingEvent(event: Event) {
   today.setHours(0, 0, 0, 0)
 
   return eventDate >= today
+}
+
+function formatDate(value?: string) {
+  if (!value) return "Sin fecha"
+
+  const date = new Date(`${value}T00:00:00`)
+
+  if (Number.isNaN(date.getTime())) return "Sin fecha"
+
+  return date.toLocaleDateString("es-MX", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  })
+}
+
+function formatDateTime(value?: string) {
+  if (!value) return "Sin fecha"
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) return "Sin fecha"
+
+  return date.toLocaleDateString("es-MX", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  })
 }
 
 export default function DashboardPage() {
@@ -158,6 +195,29 @@ export default function DashboardPage() {
     () => data.events.filter(isUpcomingEvent).length,
     [data.events]
   )
+  const nextEvents = useMemo(() => {
+    return data.events
+      .filter(isUpcomingEvent)
+      .sort((first, second) => {
+        const firstDate = first.date ? new Date(`${first.date}T00:00:00`) : null
+        const secondDate = second.date
+          ? new Date(`${second.date}T00:00:00`)
+          : null
+
+        return (firstDate?.getTime() || 0) - (secondDate?.getTime() || 0)
+      })
+      .slice(0, 5)
+  }, [data.events])
+  const recentAnnouncements = useMemo(() => {
+    return [...data.announcements]
+      .sort((first, second) => {
+        const firstDate = first.createdAt ? new Date(first.createdAt) : null
+        const secondDate = second.createdAt ? new Date(second.createdAt) : null
+
+        return (secondDate?.getTime() || 0) - (firstDate?.getTime() || 0)
+      })
+      .slice(0, 5)
+  }, [data.announcements])
   const churchName = data.church?.churchName || "Tu iglesia"
   const userName =
     data.user?.displayName || data.user?.name || data.user?.email || "usuario"
@@ -196,114 +256,221 @@ export default function DashboardPage() {
         </p>
       </section>
 
-      <section className="grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs md:grid-cols-2 xl:grid-cols-4 dark:*:data-[slot=card]:bg-card">
-        <Card className="@container/card">
-          <CardHeader>
-            <CardDescription>Usuarios registrados</CardDescription>
-            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-              {data.users.length}
-            </CardTitle>
-            <CardAction>
-              <Badge variant="outline">
-                <Users />
-                Total
-              </Badge>
-            </CardAction>
-          </CardHeader>
-          <CardFooter className="flex-col items-start gap-1.5 text-sm">
-            <div className="line-clamp-1 flex gap-2 font-medium">
-              Comunidad visible <Users className="size-4" />
-            </div>
-            <div className="text-muted-foreground">
-              Usuarios disponibles para tu rol actual.
-            </div>
-          </CardFooter>
-        </Card>
+      <Tabs
+        defaultValue={canSeeAnalytics ? "administration" : "community"}
+        className="w-full gap-4"
+      >
+        <TabsList className="inline-grid w-full grid-flow-col auto-cols-fr sm:w-fit sm:auto-cols-auto">
+          {canSeeAnalytics ? (
+            <TabsTrigger value="administration">Administración</TabsTrigger>
+          ) : null}
+          <TabsTrigger value="community">Comunidad</TabsTrigger>
+        </TabsList>
 
-        <Card className="@container/card">
-          <CardHeader>
-            <CardDescription>Próximos eventos</CardDescription>
-            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-              {upcomingEvents}
-            </CardTitle>
-            <CardAction>
-              <Badge variant="outline">
-                <CalendarDays />
-                Agenda
-              </Badge>
-            </CardAction>
-          </CardHeader>
-          <CardFooter className="flex-col items-start gap-1.5 text-sm">
-            <div className="line-clamp-1 flex gap-2 font-medium">
-              Eventos activos <CalendarDays className="size-4" />
-            </div>
-            <div className="text-muted-foreground">
-              Actividades con fecha de hoy en adelante.
-            </div>
-          </CardFooter>
-        </Card>
+        {canSeeAnalytics ? (
+          <TabsContent value="administration" className="space-y-6">
+            <section className="grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs md:grid-cols-2 xl:grid-cols-4 dark:*:data-[slot=card]:bg-card">
+              <Card className="@container/card">
+                <CardHeader>
+                  <CardDescription>Usuarios registrados</CardDescription>
+                  <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                    {data.users.length}
+                  </CardTitle>
+                  <CardAction>
+                    <Badge variant="outline">
+                      <Users />
+                      Total
+                    </Badge>
+                  </CardAction>
+                </CardHeader>
+                <CardFooter className="flex-col items-start gap-1.5 text-sm">
+                  <div className="line-clamp-1 flex gap-2 font-medium">
+                    Comunidad visible <Users className="size-4" />
+                  </div>
+                  <div className="text-muted-foreground">
+                    Usuarios disponibles para tu rol actual.
+                  </div>
+                </CardFooter>
+              </Card>
 
-        <Card className="@container/card">
-          <CardHeader>
-            <CardDescription>Anuncios</CardDescription>
-            <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
-              {data.announcements.length}
-            </CardTitle>
-            <CardAction>
-              <Badge variant="outline">
-                <Megaphone />
-                Publicados
-              </Badge>
-            </CardAction>
-          </CardHeader>
-          <CardFooter className="flex-col items-start gap-1.5 text-sm">
-            <div className="line-clamp-1 flex gap-2 font-medium">
-              Comunicación vigente <Megaphone className="size-4" />
-            </div>
-            <div className="text-muted-foreground">
-              Anuncios disponibles para la iglesia.
-            </div>
-          </CardFooter>
-        </Card>
+              <Card className="@container/card">
+                <CardHeader>
+                  <CardDescription>Próximos eventos</CardDescription>
+                  <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                    {upcomingEvents}
+                  </CardTitle>
+                  <CardAction>
+                    <Badge variant="outline">
+                      <CalendarDays />
+                      Agenda
+                    </Badge>
+                  </CardAction>
+                </CardHeader>
+                <CardFooter className="flex-col items-start gap-1.5 text-sm">
+                  <div className="line-clamp-1 flex gap-2 font-medium">
+                    Eventos activos <CalendarDays className="size-4" />
+                  </div>
+                  <div className="text-muted-foreground">
+                    Actividades con fecha de hoy en adelante.
+                  </div>
+                </CardFooter>
+              </Card>
 
-        <Card className="@container/card">
-          <CardHeader>
-            <CardDescription>Acceso actual</CardDescription>
-            <CardTitle className="text-2xl font-semibold @[250px]/card:text-3xl">
-              {role}
-            </CardTitle>
-            <CardAction>
-              <Badge variant="outline">
-                <ShieldCheck />
-                Rol
-              </Badge>
-            </CardAction>
-          </CardHeader>
-          <CardFooter className="flex-col items-start gap-1.5 text-sm">
-            <div className="line-clamp-1 flex gap-2 font-medium">
-              Sesión activa <ShieldCheck className="size-4" />
-            </div>
-            <div className="text-muted-foreground">
-              Permisos aplicados a tu navegación.
-            </div>
-          </CardFooter>
-        </Card>
-      </section>
+              <Card className="@container/card">
+                <CardHeader>
+                  <CardDescription>Anuncios</CardDescription>
+                  <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
+                    {data.announcements.length}
+                  </CardTitle>
+                  <CardAction>
+                    <Badge variant="outline">
+                      <Megaphone />
+                      Publicados
+                    </Badge>
+                  </CardAction>
+                </CardHeader>
+                <CardFooter className="flex-col items-start gap-1.5 text-sm">
+                  <div className="line-clamp-1 flex gap-2 font-medium">
+                    Comunicación vigente <Megaphone className="size-4" />
+                  </div>
+                  <div className="text-muted-foreground">
+                    Anuncios disponibles para la iglesia.
+                  </div>
+                </CardFooter>
+              </Card>
 
-      {canSeeAnalytics ? (
-        <Tabs defaultValue="users" className="w-full gap-4">
-          <TabsList className="w-full sm:w-fit">
-            <TabsTrigger value="users">Usuarios</TabsTrigger>
-            <TabsTrigger value="offerings">Ofrendas</TabsTrigger>
-          </TabsList>
-          <TabsContent value="users">
-            <UsersCreatedChart users={data.users} />
+              <Card className="@container/card">
+                <CardHeader>
+                  <CardDescription>Acceso actual</CardDescription>
+                  <CardTitle className="text-2xl font-semibold @[250px]/card:text-3xl">
+                    {role}
+                  </CardTitle>
+                  <CardAction>
+                    <Badge variant="outline">
+                      <ShieldCheck />
+                      Rol
+                    </Badge>
+                  </CardAction>
+                </CardHeader>
+                <CardFooter className="flex-col items-start gap-1.5 text-sm">
+                  <div className="line-clamp-1 flex gap-2 font-medium">
+                    Sesión activa <ShieldCheck className="size-4" />
+                  </div>
+                  <div className="text-muted-foreground">
+                    Permisos aplicados a tu navegación.
+                  </div>
+                </CardFooter>
+              </Card>
+            </section>
+
+            <Tabs defaultValue="users" className="w-full gap-4">
+              <TabsList className="w-full sm:w-fit">
+                <TabsTrigger value="users">Usuarios</TabsTrigger>
+                <TabsTrigger value="offerings">Ofrendas</TabsTrigger>
+              </TabsList>
+              <TabsContent value="users">
+                <UsersCreatedChart users={data.users} />
+              </TabsContent>
+              <TabsContent value="offerings">
+                <OfferingsChart offerings={data.offerings} />
+              </TabsContent>
+            </Tabs>
           </TabsContent>
-          <TabsContent value="offerings">
-            <OfferingsChart offerings={data.offerings} />
-          </TabsContent>
-        </Tabs>
-      ) : null}
+        ) : null}
+
+        <TabsContent value="community">
+          <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <Card className="min-w-0">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <CalendarDays className="size-5" />
+                  Próximos eventos
+                </CardTitle>
+                <CardDescription>
+                  Actividades programadas para la comunidad.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {nextEvents.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No hay eventos próximos registrados.
+                  </p>
+                ) : (
+                  nextEvents.map((event) => (
+                    <div
+                      key={event._id}
+                      className="rounded-lg border bg-background px-3 py-3"
+                    >
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">
+                            {event.name || "Evento"}
+                          </p>
+                          <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                            {event.description || "Sin descripción"}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="w-fit">
+                          {formatDate(event.date)}
+                        </Badge>
+                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {event.startTime ? `${event.startTime}` : "Hora por definir"}
+                        {event.location ? ` · ${event.location}` : ""}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="min-w-0">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Megaphone className="size-5" />
+                  Anuncios recientes
+                </CardTitle>
+                <CardDescription>
+                  Comunicados publicados para la iglesia.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {recentAnnouncements.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No hay anuncios publicados todavía.
+                  </p>
+                ) : (
+                  recentAnnouncements.map((announcement) => (
+                    <div
+                      key={announcement._id}
+                      className="rounded-lg border bg-background px-3 py-3"
+                    >
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div className="min-w-0">
+                          <p className="truncate font-medium">
+                            {announcement.title || "Anuncio"}
+                          </p>
+                          <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                            {announcement.content || "Sin contenido"}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="w-fit">
+                          {formatDateTime(announcement.createdAt)}
+                        </Badge>
+                      </div>
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {announcement.authorName
+                          ? `Publicado por ${announcement.authorName}`
+                          : "Publicado para la comunidad"}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          </section>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
