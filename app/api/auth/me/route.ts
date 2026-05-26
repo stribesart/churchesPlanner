@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { ObjectId } from "mongodb"
 import { getTenantFromRequest, getTenantDbByName } from "@/lib/tenant"
+import clientPromise from "@/lib/mongodb"
 
 export async function GET(req: Request) {
   try {
@@ -30,8 +31,22 @@ export async function GET(req: Request) {
     const user = await tenantDb.collection("users").findOne({
       _id: new ObjectId(session),
     })
+    const client = await clientPromise
+    const globalDb = client.db("churchesPlanner")
+    const church = await globalDb.collection("churches").findOne(
+      { dbName: tenantDbName },
+      {
+        projection: {
+          churchName: 1,
+          location: 1,
+          generalServiceDay: 1,
+          generalServiceStartTime: 1,
+          serviceFrequency: 1,
+        },
+      }
+    )
 
-    return NextResponse.json({ user })
+    return NextResponse.json({ user, church })
 
   } catch {
     return NextResponse.json({ user: null })
