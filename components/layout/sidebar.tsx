@@ -12,6 +12,7 @@ import {
   Megaphone,
   DollarSign,
   Settings,
+  Boxes,
 } from "lucide-react"
 import { SidebarUser } from "@/components/layout/sidebar-user"
 import {
@@ -80,6 +81,12 @@ export const menu = [
         name: "Anuncios",
         href: "/announcements",
         icon: Megaphone,
+        roles: ["pastor", "lider"],
+      },
+      {
+        name: "Inventario",
+        href: "/inventory",
+        icon: Boxes,
         roles: ["pastor", "lider"],
       },
     ],
