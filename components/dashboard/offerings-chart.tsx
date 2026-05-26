@@ -30,24 +30,26 @@ import {
   ToggleGroupItem,
 } from "@/components/ui/toggle-group"
 
-type User = {
+type Offering = {
   _id: string
+  amount: number
+  currency?: string
   createdAt?: string
 }
 
 type Props = {
-  users: User[]
+  offerings: Offering[]
 }
 
 type ChartPoint = {
   date: string
-  users: number
+  amount: number
 }
 
 const chartConfig = {
-  users: {
-    label: "Usuarios",
-    color: "var(--chart-2)",
+  amount: {
+    label: "Ofrendas",
+    color: "var(--chart-1)",
   },
 } satisfies ChartConfig
 
@@ -62,7 +64,17 @@ function getRangeDays(timeRange: string) {
   return 90
 }
 
-function buildUsersCreatedData(users: User[], timeRange: string): ChartPoint[] {
+function formatMoney(amount: number, currency = "MXN") {
+  return new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency,
+  }).format(amount)
+}
+
+function buildOfferingsData(
+  offerings: Offering[],
+  timeRange: string
+): ChartPoint[] {
   const rangeDays = getRangeDays(timeRange)
   const today = new Date()
   today.setHours(0, 0, 0, 0)
@@ -70,18 +82,18 @@ function buildUsersCreatedData(users: User[], timeRange: string): ChartPoint[] {
   const startDate = new Date(today)
   startDate.setDate(today.getDate() - (rangeDays - 1))
 
-  const countsByDate = new Map<string, number>()
+  const amountsByDate = new Map<string, number>()
 
   for (let index = 0; index < rangeDays; index += 1) {
     const date = new Date(startDate)
     date.setDate(startDate.getDate() + index)
-    countsByDate.set(formatDateKey(date), 0)
+    amountsByDate.set(formatDateKey(date), 0)
   }
 
-  users.forEach((user) => {
-    if (!user.createdAt) return
+  offerings.forEach((offering) => {
+    if (!offering.createdAt) return
 
-    const createdAt = new Date(user.createdAt)
+    const createdAt = new Date(offering.createdAt)
 
     if (Number.isNaN(createdAt.getTime())) return
 
@@ -90,16 +102,16 @@ function buildUsersCreatedData(users: User[], timeRange: string): ChartPoint[] {
     if (createdAt < startDate || createdAt > today) return
 
     const key = formatDateKey(createdAt)
-    countsByDate.set(key, (countsByDate.get(key) || 0) + 1)
+    amountsByDate.set(key, (amountsByDate.get(key) || 0) + offering.amount)
   })
 
-  return Array.from(countsByDate.entries()).map(([date, count]) => ({
+  return Array.from(amountsByDate.entries()).map(([date, amount]) => ({
     date,
-    users: count,
+    amount,
   }))
 }
 
-export function UsersCreatedChart({ users }: Props) {
+export function OfferingsChart({ offerings }: Props) {
   const isMobile = useIsMobile()
   const [timeRange, setTimeRange] = React.useState("90d")
 
@@ -110,23 +122,23 @@ export function UsersCreatedChart({ users }: Props) {
   }, [isMobile])
 
   const chartData = React.useMemo(
-    () => buildUsersCreatedData(users, timeRange),
-    [users, timeRange]
+    () => buildOfferingsData(offerings, timeRange),
+    [offerings, timeRange]
   )
-  const totalUsersInRange = chartData.reduce(
-    (total, item) => total + item.users,
+  const totalAmountInRange = chartData.reduce(
+    (total, item) => total + item.amount,
     0
   )
 
   return (
     <Card className="@container/card">
       <CardHeader className="gap-3">
-        <CardTitle>Usuarios creados</CardTitle>
+        <CardTitle>Ofrendas registradas</CardTitle>
         <CardDescription>
           <span className="hidden @[540px]/card:block">
-            Altas de usuarios en el rango seleccionado
+            Entradas financieras en el rango seleccionado
           </span>
-          <span className="@[540px]/card:hidden">Altas por fecha</span>
+          <span className="@[540px]/card:hidden">Ofrendas por fecha</span>
         </CardDescription>
         <CardAction className="static col-start-1 row-start-auto justify-self-start @[767px]/card:col-start-2 @[767px]/card:row-start-1 @[767px]/card:justify-self-end">
           <ToggleGroup
@@ -171,15 +183,15 @@ export function UsersCreatedChart({ users }: Props) {
         >
           <AreaChart data={chartData}>
             <defs>
-              <linearGradient id="fillUsers" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient id="fillOfferings" x1="0" y1="0" x2="0" y2="1">
                 <stop
                   offset="5%"
-                  stopColor="var(--color-users)"
+                  stopColor="var(--color-amount)"
                   stopOpacity={0.8}
                 />
                 <stop
                   offset="95%"
-                  stopColor="var(--color-users)"
+                  stopColor="var(--color-amount)"
                   stopOpacity={0.1}
                 />
               </linearGradient>
@@ -215,15 +227,15 @@ export function UsersCreatedChart({ users }: Props) {
               }
             />
             <Area
-              dataKey="users"
+              dataKey="amount"
               type="natural"
-              fill="url(#fillUsers)"
-              stroke="var(--color-users)"
+              fill="url(#fillOfferings)"
+              stroke="var(--color-amount)"
             />
           </AreaChart>
         </ChartContainer>
         <p className="mt-4 text-sm text-muted-foreground">
-          {totalUsersInRange} usuarios creados en el rango seleccionado.
+          {formatMoney(totalAmountInRange)} registrados en el rango seleccionado.
         </p>
       </CardContent>
     </Card>

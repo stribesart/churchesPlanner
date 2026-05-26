@@ -263,8 +263,8 @@ export default function OfferingsPage() {
         <span className="font-semibold">{formatMoney(totalAmount)}</span>
       </div>
 
-      <div className="mt-6 rounded-lg border bg-white">
-        <Table>
+      <div className="mt-6 overflow-x-auto rounded-lg border bg-white">
+        <Table className="min-w-[900px]">
           <TableHeader>
             <TableRow>
               <TableHead>Monto</TableHead>
@@ -488,7 +488,7 @@ function OfferingForm({
   }
 
   return (
-    <DialogContent className="sm:max-w-2xl">
+    <DialogContent className="max-h-[90vh] overflow-hidden sm:max-w-2xl">
       <DialogHeader>
         <DialogTitle>{isEdit ? "Editar ofrenda" : "Nueva ofrenda"}</DialogTitle>
       </DialogHeader>
@@ -630,7 +630,7 @@ function OfferingForm({
         <FieldError>{error}</FieldError>
       </FieldGroup>
 
-      <DialogFooter>
+      <DialogFooter className="gap-2 sm:gap-0">
         <Button variant="outline" onClick={() => onOpenChange(false)}>
           Cancelar
         </Button>

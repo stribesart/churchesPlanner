@@ -202,14 +202,16 @@ export default function GivingsPage() {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <TypographyH1 className="text-left">Dar ofrenda</TypographyH1>
+        <TypographyH1 className="text-left text-2xl sm:text-3xl">
+          Dar ofrenda
+        </TypographyH1>
         <p className="text-sm text-muted-foreground">
           Registra tu ofrenda para que quede ligada a tu iglesia y a tu cuenta.
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <Card>
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <HandCoins className="h-5 w-5" />
@@ -335,7 +337,7 @@ export default function GivingsPage() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle>Mis ofrendas</CardTitle>
             <CardDescription>
@@ -351,12 +353,13 @@ export default function GivingsPage() {
         </Card>
       </div>
 
-      <Card>
+      <Card className="min-w-0">
         <CardHeader>
           <CardTitle>Historial reciente</CardTitle>
         </CardHeader>
         <CardContent>
-          <Table>
+          <div className="overflow-x-auto">
+          <Table className="min-w-[620px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Monto</TableHead>
@@ -413,6 +416,7 @@ export default function GivingsPage() {
               )}
             </TableBody>
           </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
