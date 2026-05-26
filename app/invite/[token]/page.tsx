@@ -10,11 +10,18 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field"
 
 type InviteInfo = {
   churchName: string
@@ -116,15 +123,13 @@ export default function InvitePage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 text-slate-900">
       <section className="flex min-h-screen items-center justify-center px-6 py-12">
-        <Card className="w-full max-w-md rounded-3xl border bg-white/90 shadow-xl backdrop-blur">
+        <Card className="w-full max-w-md">
           <CardHeader className="space-y-3 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100">
-              <span className="text-2xl font-bold text-blue-700">CP</span>
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <span className="text-lg font-semibold">CP</span>
             </div>
             <div>
-              <CardTitle className="text-3xl font-bold text-slate-900">
-                Registro de miembro
-              </CardTitle>
+              <CardTitle>Registro de miembro</CardTitle>
               <CardDescription>
                 {invite ? `Invitación para ${invite.churchName}` : "Validando invitación..."}
               </CardDescription>
@@ -138,36 +143,34 @@ export default function InvitePage() {
               </div>
             ) : success ? (
               <div className="space-y-4">
-                <div className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
                   Tu cuenta fue creada correctamente.
                 </div>
-                <Button asChild className="w-full">
-                  <Link href="/login">Iniciar sesión</Link>
-                </Button>
               </div>
             ) : invite ? (
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <div className="space-y-2">
-                  <Label>Nombre</Label>
+              <form id="invite-form" onSubmit={handleSubmit}>
+                <FieldGroup>
+                  <Field>
+                  <FieldLabel>Nombre</FieldLabel>
                   <Input
                     value={name}
                     onChange={(event) => setName(event.target.value)}
                     placeholder="Nombre completo"
                   />
-                </div>
+                  </Field>
 
-                <div className="space-y-2">
-                  <Label>Correo electrónico</Label>
+                  <Field>
+                  <FieldLabel>Correo electrónico</FieldLabel>
                   <Input
                     type="email"
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     placeholder="correo@ejemplo.com"
                   />
-                </div>
+                  </Field>
 
-                <div className="space-y-2">
-                  <Label>Contraseña</Label>
+                  <Field>
+                  <FieldLabel>Contraseña</FieldLabel>
                   <div className="relative">
                     <Input
                       type={showPassword ? "text" : "password"}
@@ -189,10 +192,13 @@ export default function InvitePage() {
                       )}
                     </button>
                   </div>
-                </div>
+                  <FieldDescription>
+                    Mínimo 8 caracteres, una mayúscula y un número.
+                  </FieldDescription>
+                  </Field>
 
-                <div className="space-y-2">
-                  <Label>Confirmación de contraseña</Label>
+                  <Field>
+                  <FieldLabel>Confirmación de contraseña</FieldLabel>
                   <div className="relative">
                     <Input
                       type={showConfirmPassword ? "text" : "password"}
@@ -218,29 +224,41 @@ export default function InvitePage() {
                       )}
                     </button>
                   </div>
-                </div>
+                  </Field>
 
-                {error ? (
-                  <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                    {error}
-                  </div>
-                ) : null}
-
-                <Button type="submit" className="w-full" disabled={submitting}>
-                  {submitting ? "Creando cuenta..." : "Crear cuenta"}
-                </Button>
+                  <FieldError>{error}</FieldError>
+                </FieldGroup>
               </form>
             ) : (
               <div className="space-y-4">
-                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
                   {error || "El enlace no está disponible."}
                 </div>
-                <Button variant="outline" asChild className="w-full">
-                  <Link href="/login">Ir al inicio de sesión</Link>
-                </Button>
               </div>
             )}
           </CardContent>
+          {!loading ? (
+            <CardFooter className="flex-col gap-2">
+              {success ? (
+                <Button asChild className="w-full">
+                  <Link href="/login">Iniciar sesión</Link>
+                </Button>
+              ) : invite ? (
+                <Button
+                  type="submit"
+                  form="invite-form"
+                  className="w-full"
+                  disabled={submitting}
+                >
+                  {submitting ? "Creando cuenta..." : "Crear cuenta"}
+                </Button>
+              ) : (
+                <Button variant="outline" asChild className="w-full">
+                  <Link href="/login">Ir al inicio de sesión</Link>
+                </Button>
+              )}
+            </CardFooter>
+          ) : null}
         </Card>
       </section>
     </main>

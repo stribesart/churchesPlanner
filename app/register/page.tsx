@@ -6,14 +6,34 @@ import { Eye, EyeOff } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -137,255 +157,245 @@ export default function RegisterPage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 text-slate-900">
       <section className="flex min-h-screen items-center justify-center px-6 py-12">
-        <Card className="w-full max-w-md rounded-3xl border bg-white/90 shadow-xl backdrop-blur">
+        <Card className="w-full max-w-md">
           <CardHeader className="space-y-3 text-center">
-            <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-100">
-              <span className="text-2xl font-bold text-blue-700">CP</span>
+            <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <span className="text-lg font-semibold">CP</span>
             </div>
 
             <div>
-              <CardTitle className="text-3xl font-bold text-slate-900">
-                Registra tu iglesia
-              </CardTitle>
-              <p className="mt-2 text-sm text-slate-600">
+              <CardTitle>Registra tu iglesia</CardTitle>
+              <CardDescription>
                 Separa los datos de tu iglesia de la cuenta administradora.
-              </p>
+              </CardDescription>
             </div>
           </CardHeader>
 
           <CardContent>
-            <form onSubmit={handleRegister} className="space-y-5">
+            <form id="register-form" onSubmit={handleRegister} className="space-y-5">
               {step === 1 ? (
-                <div className="space-y-5">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold text-slate-700">
+                <FieldGroup>
+                  <Field>
+                    <FieldLabel>
                       Nombre de la iglesia
-                    </Label>
+                    </FieldLabel>
                     <Input
                       type="text"
                       placeholder="Nombre de la iglesia"
                       value={churchName}
                       onChange={(e) => setChurchName(e.target.value)}
-                      className="h-11 rounded-xl border-slate-200 bg-white"
                     />
-                  </div>
+                  </Field>
 
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold text-slate-700">
+                  <Field>
+                    <FieldLabel>
                       Ubicación
-                    </Label>
+                    </FieldLabel>
                     <Input
                       type="text"
                       placeholder="Ciudad, colonia o dirección"
                       value={location}
                       onChange={(e) => setLocation(e.target.value)}
-                      className="h-11 rounded-xl border-slate-200 bg-white"
                     />
-                    <p className="text-xs text-slate-500">
+                    <FieldDescription>
                       Opcional. Se usará solo como información del perfil de la iglesia.
-                    </p>
-                  </div>
+                    </FieldDescription>
+                  </Field>
 
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold text-slate-700">
+                  <Field>
+                    <FieldLabel>
                       Día de servicio general
-                    </Label>
-                    <select
+                    </FieldLabel>
+                    <Select
                       value={generalServiceDay}
-                      onChange={(e) => setGeneralServiceDay(e.target.value)}
-                      className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-slate-900 outline-none focus:border-blue-500"
+                      onValueChange={setGeneralServiceDay}
                     >
-                      <option value="">Selecciona un día</option>
-                      {serviceDays.map((day) => (
-                        <option key={day} value={day}>
-                          {day}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Selecciona un día" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {serviceDays.map((day) => (
+                          <SelectItem key={day} value={day}>
+                            {day}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </Field>
 
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold text-slate-700">
+                  <Field>
+                    <FieldLabel>
                       Hora de inicio del servicio
-                    </Label>
+                    </FieldLabel>
                     <Input
                       type="time"
                       value={generalServiceStartTime}
                       onChange={(e) => setGeneralServiceStartTime(e.target.value)}
-                      className="h-11 rounded-xl border-slate-200 bg-white"
                     />
-                  </div>
+                  </Field>
 
-                  <Accordion type="single" collapsible className="rounded-2xl border border-slate-200 bg-white px-4">
+                  <Accordion type="single" collapsible className="rounded-lg border px-3">
                     <AccordionItem value="frequency" className="border-0">
-                      <AccordionTrigger className="py-3 text-slate-800 hover:no-underline">
+                      <AccordionTrigger className="py-3 hover:no-underline">
                         Frecuencia
                       </AccordionTrigger>
-                      <AccordionContent className="pb-4">
-                        <div className="grid gap-2">
-                          {serviceFrequencies.map((frequency) => (
-                            <label
-                              key={frequency.value}
-                              className="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 px-3 py-3 transition hover:bg-slate-50"
-                            >
-                              <input
-                                type="radio"
-                                name="service-frequency"
-                                value={frequency.value}
-                                checked={serviceFrequency === frequency.value}
-                                onChange={(e) => setServiceFrequency(e.target.value)}
-                                className="mt-1"
-                              />
-                              <span>
-                                <span className="block text-sm font-semibold text-slate-800">
+                      <AccordionContent className="space-y-3 pb-4">
+                        <Field>
+                          <FieldLabel>Frecuencia de la reunión</FieldLabel>
+                          <Select
+                            value={serviceFrequency}
+                            onValueChange={setServiceFrequency}
+                          >
+                            <SelectTrigger className="w-full">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {serviceFrequencies.map((frequency) => (
+                                <SelectItem
+                                  key={frequency.value}
+                                  value={frequency.value}
+                                >
                                   {frequency.label}
-                                </span>
-                                <span className="block text-xs text-slate-500">
-                                  {frequency.description}
-                                </span>
-                              </span>
-                            </label>
-                          ))}
-                        </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FieldDescription>
+                            {
+                              serviceFrequencies.find(
+                                (frequency) => frequency.value === serviceFrequency
+                              )?.description
+                            }
+                          </FieldDescription>
+                        </Field>
                       </AccordionContent>
                     </AccordionItem>
                   </Accordion>
-                </div>
+                </FieldGroup>
               ) : (
-                <div className="space-y-5">
-                  <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                <FieldGroup>
+                  <div className="rounded-lg border bg-muted/50 px-4 py-3 text-sm text-muted-foreground">
                     Esta cuenta será el administrador principal de la iglesia.
                   </div>
 
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold text-slate-700">
+                  <Field>
+                    <FieldLabel>
                       Nombre del administrador o pastor
-                    </Label>
+                    </FieldLabel>
                     <Input
                       type="text"
                       placeholder="Nombre completo"
                       value={adminName}
                       onChange={(e) => setAdminName(e.target.value)}
-                      className="h-11 rounded-xl border-slate-200 bg-white"
                     />
-                  </div>
+                  </Field>
 
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold text-slate-700">
+                  <Field>
+                    <FieldLabel>
                       Correo del administrador
-                    </Label>
+                    </FieldLabel>
                     <Input
                       type="email"
                       placeholder="admin@ejemplo.com"
                       value={adminEmail}
                       onChange={(e) => setAdminEmail(e.target.value)}
-                      className="h-11 rounded-xl border-slate-200 bg-white"
                     />
-                  </div>
+                  </Field>
 
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold text-slate-700">
+                  <Field>
+                    <FieldLabel>
                       Edad
-                    </Label>
+                    </FieldLabel>
                     <Input
                       type="number"
                       placeholder="Edad"
                       min={1}
                       value={age}
                       onChange={(e) => setAge(e.target.value)}
-                      className="h-11 rounded-xl border-slate-200 bg-white"
                     />
-                  </div>
+                  </Field>
 
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold text-slate-700">
+                  <Field>
+                    <FieldLabel>
                       Contraseña
-                    </Label>
+                    </FieldLabel>
                     <div className="relative">
                       <Input
                         type={showPassword ? "text" : "password"}
                         placeholder="********"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="h-11 rounded-xl border-slate-200 bg-white pr-12"
+                        className="pr-10"
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword((prev) => !prev)}
-                        className="absolute right-2 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="absolute right-1 top-1/2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                         aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}
                       >
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
-                    <p className="text-xs text-slate-500">
+                    <FieldDescription>
                       La contraseña debe tener mínimo 8 caracteres, incluir una mayúscula, letras y un número.
-                    </p>
-                  </div>
+                    </FieldDescription>
+                  </Field>
 
-                  <div className="space-y-2">
-                    <Label className="text-sm font-semibold text-slate-700">
+                  <Field>
+                    <FieldLabel>
                       Confirmación de contraseña
-                    </Label>
+                    </FieldLabel>
                     <div className="relative">
                       <Input
                         type={showConfirmPassword ? "text" : "password"}
                         placeholder="********"
                         value={confirmPassword}
                         onChange={(e) => setConfirmPassword(e.target.value)}
-                        className="h-11 rounded-xl border-slate-200 bg-white pr-12"
+                        className="pr-10"
                       />
                       <button
                         type="button"
                         onClick={() => setShowConfirmPassword((prev) => !prev)}
-                        className="absolute right-2 top-1/2 inline-flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="absolute right-1 top-1/2 inline-flex size-7 -translate-y-1/2 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                         aria-label={showConfirmPassword ? "Ocultar confirmación" : "Mostrar confirmación"}
                       >
                         {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
-                  </div>
-                </div>
+                  </Field>
+                </FieldGroup>
               )}
 
-              {error ? (
-                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                  {error}
-                </div>
-              ) : null}
-
-              <div className="flex items-center justify-between gap-3">
-                {step > 1 ? (
-                  <Button
-                    type="button"
-                    className="h-11 rounded-full border border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                    onClick={() => {
-                      setError("")
-                      setStep(step - 1)
-                    }}
-                  >
-                    Regresar
-                  </Button>
-                ) : (
-                  <div />
-                )}
-
-                <Button
-                  type="submit"
-                  className="h-11 rounded-full bg-blue-700 px-5 font-semibold text-white transition hover:bg-blue-800"
-                  disabled={loading}
-                >
-                  {step < 2 ? "Siguiente" : loading ? "Registrando..." : "Finalizar registro"}
-                </Button>
-              </div>
-
-              <div className="text-center text-sm text-slate-600">
-                <a href="/login" className="font-semibold text-blue-700 hover:text-blue-800">
-                  ¿Ya tienes cuenta? Inicia sesión
-                </a>
-              </div>
+              <FieldError>{error}</FieldError>
             </form>
           </CardContent>
+          <CardFooter className="flex-col gap-3 sm:flex-row">
+            {step > 1 ? (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setError("")
+                  setStep(step - 1)
+                }}
+              >
+                Regresar
+              </Button>
+            ) : null}
+
+            <Button
+              type="submit"
+              form="register-form"
+              className="w-full sm:flex-1"
+              disabled={loading}
+            >
+              {step < 2 ? "Siguiente" : loading ? "Registrando..." : "Finalizar registro"}
+            </Button>
+
+            <Button variant="ghost" asChild className="w-full sm:w-auto">
+              <a href="/login">Iniciar sesión</a>
+            </Button>
+          </CardFooter>
         </Card>
       </section>
     </main>
