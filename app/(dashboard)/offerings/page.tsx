@@ -49,8 +49,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { TypographyH1 } from "@/components/ui/typography"
 
 type OfferingType = "voluntary" | "event" | "tithe" | "special" | "other"
-type OfferingSource = "registered_user" | "anonymous" | "manual"
+type OfferingSource = "registered_user" | "anonymous" | "manual" | "self_service"
 type PaymentMethod = "cash" | "transfer" | "card" | "other"
+type PaymentStatus = "paid" | "pending" | "failed"
 
 type Offering = {
   _id: string
@@ -64,6 +65,10 @@ type Offering = {
   userName?: string
   donorName?: string
   paymentMethod: PaymentMethod
+  paymentProvider?: "manual" | "mock"
+  providerPaymentId?: string | null
+  paymentStatus?: PaymentStatus
+  entrySource?: "admin" | "self_service"
   notes?: string
   recordedByName?: string
   createdAt?: string
@@ -95,6 +100,13 @@ const sourceLabels: Record<OfferingSource, string> = {
   registered_user: "Usuario registrado",
   anonymous: "Anónima",
   manual: "Manual",
+  self_service: "Usuario",
+}
+
+const adminSourceLabels: Partial<Record<OfferingSource, string>> = {
+  registered_user: "Usuario registrado",
+  anonymous: "Anónima",
+  manual: "Manual",
 }
 
 const paymentMethodLabels: Record<PaymentMethod, string> = {
@@ -102,6 +114,12 @@ const paymentMethodLabels: Record<PaymentMethod, string> = {
   transfer: "Transferencia",
   card: "Tarjeta",
   other: "Otro",
+}
+
+const paymentStatusLabels: Record<PaymentStatus, string> = {
+  paid: "Pagada",
+  pending: "Pendiente",
+  failed: "Fallida",
 }
 
 function formatMoney(amount: number, currency = "MXN") {
@@ -255,6 +273,7 @@ export default function OfferingsPage() {
               <TableHead>Evento</TableHead>
               <TableHead>Donante</TableHead>
               <TableHead>Método</TableHead>
+              <TableHead>Estado</TableHead>
               <TableHead>Registró</TableHead>
               <TableHead>Fecha</TableHead>
               <TableHead>Acciones</TableHead>
@@ -263,19 +282,19 @@ export default function OfferingsPage() {
           <TableBody>
             {pageError ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center text-destructive">
+                <TableCell colSpan={10} className="text-center text-destructive">
                   {pageError}
                 </TableCell>
               </TableRow>
             ) : loading ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center text-muted-foreground">
+                <TableCell colSpan={10} className="text-center text-muted-foreground">
                   Cargando ofrendas...
                 </TableCell>
               </TableRow>
             ) : offerings.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center text-muted-foreground">
+                <TableCell colSpan={10} className="text-center text-muted-foreground">
                   Todavía no hay ofrendas registradas.
                 </TableCell>
               </TableRow>
@@ -300,6 +319,19 @@ export default function OfferingsPage() {
                     <Badge variant="outline">
                       {paymentMethodLabels[offering.paymentMethod] ||
                         offering.paymentMethod}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={
+                        offering.paymentStatus === "failed"
+                          ? "destructive"
+                          : "outline"
+                      }
+                    >
+                      {offering.paymentStatus
+                        ? paymentStatusLabels[offering.paymentStatus]
+                        : "Pagada"}
                     </Badge>
                   </TableCell>
                   <TableCell>{offering.recordedByName || "-"}</TableCell>
@@ -435,6 +467,9 @@ function OfferingForm({
           userId: userId === noneValue ? null : userId,
           donorName,
           paymentMethod,
+          paymentProvider: "manual",
+          paymentStatus: "paid",
+          entrySource: "admin",
           notes,
         }),
       }
@@ -499,7 +534,12 @@ function OfferingForm({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(sourceLabels).map(([value, label]) => (
+                {source === "self_service" ? (
+                  <SelectItem value="self_service">
+                    Usuario
+                  </SelectItem>
+                ) : null}
+                {Object.entries(adminSourceLabels).map(([value, label]) => (
                   <SelectItem key={value} value={value}>
                     {label}
                   </SelectItem>

@@ -11,12 +11,19 @@ export const offeringSources = [
   "registered_user",
   "anonymous",
   "manual",
+  "self_service",
 ] as const
 export const paymentMethods = ["cash", "transfer", "card", "other"] as const
+export const paymentProviders = ["manual", "mock"] as const
+export const paymentStatuses = ["paid", "pending", "failed"] as const
+export const entrySources = ["admin", "self_service"] as const
 
 export type OfferingType = (typeof offeringTypes)[number]
 export type OfferingSource = (typeof offeringSources)[number]
 export type PaymentMethod = (typeof paymentMethods)[number]
+export type PaymentProvider = (typeof paymentProviders)[number]
+export type PaymentStatus = (typeof paymentStatuses)[number]
+export type EntrySource = (typeof entrySources)[number]
 
 export type OfferingInput = {
   amount: number
@@ -27,6 +34,10 @@ export type OfferingInput = {
   userId: string | null
   donorName: string
   paymentMethod: PaymentMethod
+  paymentProvider: PaymentProvider
+  providerPaymentId: string | null
+  paymentStatus: PaymentStatus
+  entrySource: EntrySource
   notes: string
 }
 
@@ -69,6 +80,36 @@ function getPaymentMethod(value: unknown): PaymentMethod {
   }
 
   return "cash"
+}
+
+function getPaymentProvider(value: unknown): PaymentProvider {
+  if (
+    typeof value === "string" &&
+    paymentProviders.includes(value as PaymentProvider)
+  ) {
+    return value as PaymentProvider
+  }
+
+  return "manual"
+}
+
+function getPaymentStatus(value: unknown): PaymentStatus {
+  if (
+    typeof value === "string" &&
+    paymentStatuses.includes(value as PaymentStatus)
+  ) {
+    return value as PaymentStatus
+  }
+
+  return "paid"
+}
+
+function getEntrySource(value: unknown): EntrySource {
+  if (typeof value === "string" && entrySources.includes(value as EntrySource)) {
+    return value as EntrySource
+  }
+
+  return "admin"
 }
 
 function parseOptionalObjectId(value: unknown) {
@@ -133,6 +174,13 @@ export function parseOfferingInput(body: Record<string, unknown>) {
             ? "Anónimo"
             : "",
       paymentMethod: getPaymentMethod(body.paymentMethod),
+      paymentProvider: getPaymentProvider(body.paymentProvider),
+      providerPaymentId:
+        typeof body.providerPaymentId === "string" && body.providerPaymentId.trim()
+          ? body.providerPaymentId.trim()
+          : null,
+      paymentStatus: getPaymentStatus(body.paymentStatus),
+      entrySource: getEntrySource(body.entrySource),
       notes: typeof body.notes === "string" ? body.notes.trim() : "",
     } satisfies OfferingInput,
   }
