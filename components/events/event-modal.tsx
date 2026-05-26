@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -55,33 +55,13 @@ export default function EventModal({
 
   const isEdit = !!event
 
-  const [name, setName] = useState("")
-  const [description, setDescription] = useState("")
-  const [date, setDate] = useState("")
-  const [startTime, setStartTime] = useState("")
-  const [endTime, setEndTime] = useState("")
-  const [location, setLocation] = useState("")
-  const [organizer, setOrganizer] = useState<string>("")
-
-  useEffect(() => {
-    if (event) {
-      setName(event.name)
-      setDescription(event.description)
-      setDate(event.date)
-      setStartTime(event.startTime)
-      setEndTime(event.endTime)
-      setLocation(event.location)
-      setOrganizer(event.organizer)
-    } else {
-      setName("")
-      setDescription("")
-      setDate("")
-      setStartTime("")
-      setEndTime("")
-      setLocation("")
-      setOrganizer("")
-    }
-  }, [event])
+  const [name, setName] = useState(event?.name ?? "")
+  const [description, setDescription] = useState(event?.description ?? "")
+  const [date, setDate] = useState(event?.date ?? "")
+  const [startTime, setStartTime] = useState(event?.startTime ?? "")
+  const [endTime, setEndTime] = useState(event?.endTime ?? "")
+  const [location, setLocation] = useState(event?.location ?? "")
+  const [organizer, setOrganizer] = useState<string>(event?.organizer ?? "")
 
   async function handleSubmit() {
     const url = isEdit

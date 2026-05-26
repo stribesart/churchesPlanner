@@ -1,5 +1,5 @@
 // components/dashboard/AdminDashboard.tsx
-import { CalendarDays, Sparkles, Target, Users } from "lucide-react"
+import { Sparkles, Target, Users } from "lucide-react"
 import StatsCard from "./StatsCard"
 import EventList from "./EventList"
 import ActivityFeed from "./ActivityFeed"

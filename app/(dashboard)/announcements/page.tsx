@@ -55,7 +55,19 @@ export default function AnnouncementsPage() {
   }
 
   useEffect(() => {
-    fetchAnnouncements()
+    let isMounted = true
+
+    fetch("/api/announcements")
+      .then((res) => res.json())
+      .then((data) => {
+        if (isMounted) {
+          setAnnouncements(data)
+        }
+      })
+
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   const filteredAnnouncements = announcements.filter((announcement) => {
@@ -238,6 +250,7 @@ export default function AnnouncementsPage() {
       </div>
 
       <AnnouncementModal
+        key={`${selectedAnnouncement?._id ?? "new"}-${open ? "open" : "closed"}`}
         open={open}
         onOpenChange={setOpen}
         announcement={selectedAnnouncement}

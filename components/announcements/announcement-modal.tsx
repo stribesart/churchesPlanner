@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -35,21 +35,9 @@ export default function AnnouncementModal({
 
   const isEdit = !!announcement
 
-  const [title, setTitle] = useState("")
-  const [content, setContent] = useState("")
-  const [author, setAuthor] = useState("")
-
-  useEffect(() => {
-    if (announcement) {
-      setTitle(announcement.title)
-      setContent(announcement.content)
-      setAuthor(announcement.author)
-    } else {
-      setTitle("")
-      setContent("")
-      setAuthor("")
-    }
-  }, [announcement])
+  const [title, setTitle] = useState(announcement?.title ?? "")
+  const [content, setContent] = useState(announcement?.content ?? "")
+  const [author, setAuthor] = useState(announcement?.author ?? "")
 
   async function handleSubmit() {
     const url = isEdit

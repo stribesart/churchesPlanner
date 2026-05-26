@@ -71,7 +71,25 @@ export default function EventsPage() {
   }
 
   useEffect(() => {
-    fetchEvents()
+    let isMounted = true
+
+    Promise.all([
+      fetch("/api/events"),
+      fetch("/api/ministeries"),
+    ])
+      .then(async ([eventsRes, ministeriesRes]) => {
+        const eventsData = await eventsRes.json()
+        const ministeriesData = await ministeriesRes.json()
+
+        if (isMounted) {
+          setEvents(eventsData)
+          setOrganizers(ministeriesData.leaders || [])
+        }
+      })
+
+    return () => {
+      isMounted = false
+    }
   }, [])
 
   const filteredEvents = events.filter((event) => {
@@ -244,6 +262,7 @@ export default function EventsPage() {
       </div>
 
       <EventModal
+        key={`${selectedEvent?._id ?? "new"}-${open ? "open" : "closed"}`}
         open={open}
         onOpenChange={setOpen}
         event={selectedEvent}
