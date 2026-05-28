@@ -20,6 +20,8 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { SubmittingOverlay } from "@/components/ui/submitting-overlay"
 import {
   Select,
   SelectContent,
@@ -178,40 +180,44 @@ export default function GivingsPage() {
 
     setSaving(true)
 
-    const res = await fetch("/api/givings", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        amount: parsedAmount,
-        currency: "MXN",
-        type,
-        eventId: type === "event" && eventId !== noneValue ? eventId : null,
-        paymentMethod,
-        notes: trimmedNotes,
-      }),
-    })
-    const data = await res.json()
+    try {
+      const res = await fetch("/api/givings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          amount: parsedAmount,
+          currency: "MXN",
+          type,
+          eventId: type === "event" && eventId !== noneValue ? eventId : null,
+          paymentMethod,
+          notes: trimmedNotes,
+        }),
+      })
+      const data = await res.json()
 
-    setSaving(false)
+      if (!res.ok) {
+        setError(data?.message || "No se pudo registrar la ofrenda")
+        return
+      }
 
-    if (!res.ok) {
-      setError(data?.message || "No se pudo registrar la ofrenda")
-      return
+      setAmount("")
+      setType("voluntary")
+      setEventId(noneValue)
+      setPaymentMethod("card")
+      setNotes("")
+      setSuccess(
+        data?.providerPaymentId
+          ? `Ofrenda registrada con referencia ${data.providerPaymentId}`
+          : "Ofrenda registrada"
+      )
+      await refreshGivings()
+    } catch {
+      setError("No se pudo registrar la ofrenda")
+    } finally {
+      setSaving(false)
     }
-
-    setAmount("")
-    setType("voluntary")
-    setEventId(noneValue)
-    setPaymentMethod("card")
-    setNotes("")
-    setSuccess(
-      data?.providerPaymentId
-        ? `Ofrenda registrada con referencia ${data.providerPaymentId}`
-        : "Ofrenda registrada"
-    )
-    refreshGivings()
   }
 
   return (
@@ -226,7 +232,7 @@ export default function GivingsPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <Card className="min-w-0">
+        <Card className="relative min-w-0">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <HandCoins className="h-5 w-5" />
@@ -237,7 +243,13 @@ export default function GivingsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <FieldGroup>
+            <SubmittingOverlay
+              show={saving}
+              label="Registrando..."
+              className="fixed z-[70]"
+            />
+
+            <FieldGroup aria-busy={saving}>
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <Field>
                   <FieldLabel>Monto</FieldLabel>
@@ -346,7 +358,14 @@ export default function GivingsPage() {
               ) : null}
 
               <Button onClick={handleSubmit} disabled={saving} className="w-full">
-                {saving ? "Registrando..." : "Registrar ofrenda"}
+                {saving ? (
+                  <>
+                    <LoadingSpinner />
+                    Registrando...
+                  </>
+                ) : (
+                  "Registrar ofrenda"
+                )}
               </Button>
             </FieldGroup>
           </CardContent>

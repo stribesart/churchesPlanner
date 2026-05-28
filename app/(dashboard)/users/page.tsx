@@ -34,6 +34,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { SubmittingOverlay } from "@/components/ui/submitting-overlay"
 import {
   Tooltip,
   TooltipContent,
@@ -70,6 +72,7 @@ export default function UsersPage() {
   const [inviteError, setInviteError] = useState("")
   const [inviteLoading, setInviteLoading] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
   const isLeader = isLeaderRole(currentUserRole)
 
   const refreshUsersPage = useCallback(async () => {
@@ -140,18 +143,24 @@ export default function UsersPage() {
   }, [])
 
   async function handleDelete(id: string) {
-    const res = await fetch(`/api/users/${id}`, {
-      method: "DELETE",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ id }),
-    })
+    setSubmitting(true)
 
-    if (res.ok) {
-      refreshUsersPage()
-    } else {
-      alert("Error al eliminar")
+    try {
+      const res = await fetch(`/api/users/${id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ id }),
+      })
+
+      if (res.ok) {
+        await refreshUsersPage()
+      } else {
+        alert("Error al eliminar")
+      }
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -183,6 +192,12 @@ export default function UsersPage() {
 
   return (
     <div>
+      <SubmittingOverlay
+        show={submitting || inviteLoading}
+        label={inviteLoading ? "Generando..." : "Guardando cambios..."}
+        className="fixed z-[70]"
+      />
+
       <TypographyH1 className="mb-6 text-left">
         Miembros
       </TypographyH1>
@@ -195,7 +210,10 @@ export default function UsersPage() {
               Crea primero los roles que tus colaboradores podrán desempeñar.
             </p>
           </div>
-          <MinistryRolesManager onRolesChange={setMinistryRoles} />
+          <MinistryRolesManager
+            onRolesChange={setMinistryRoles}
+            onSubmittingChange={setSubmitting}
+          />
         </section>
       ) : null}
 
@@ -203,7 +221,7 @@ export default function UsersPage() {
         <Button onClick={() => {
           setSelectedUser(null)
           setOpen(true)
-        }}>
+        }} disabled={submitting || inviteLoading}>
           + Nuevo usuario
         </Button>
         <Button
@@ -213,6 +231,7 @@ export default function UsersPage() {
             setInviteError("")
             setInviteUrl("")
           }}
+          disabled={submitting || inviteLoading}
         >
           <LinkIcon className="h-4 w-4" />
           Crear link
@@ -267,6 +286,7 @@ export default function UsersPage() {
                               setSelectedUser(user)
                               setOpen(true)
                             }}
+                            disabled={submitting || inviteLoading}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -279,7 +299,11 @@ export default function UsersPage() {
                         <TooltipTrigger asChild>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button size="icon" variant="destructive">
+                              <Button
+                                size="icon"
+                                variant="destructive"
+                                disabled={submitting || inviteLoading}
+                              >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </AlertDialogTrigger>
@@ -302,6 +326,7 @@ export default function UsersPage() {
 
                                 <AlertDialogAction
                                   onClick={() => handleDelete(user._id)}
+                                  disabled={submitting || inviteLoading}
                                 >
                                   Sí, eliminar
                                 </AlertDialogAction>
@@ -329,11 +354,23 @@ export default function UsersPage() {
           user={selectedUser}
           currentUserRole={currentUserRole}
           onSuccess={refreshUsersPage}
+          submitting={submitting}
+          onSubmittingChange={setSubmitting}
         />
       </div>
 
-      <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
-        <DialogContent>
+      <Dialog
+        open={inviteOpen}
+        onOpenChange={(nextOpen) => {
+          if (inviteLoading && !nextOpen) return
+
+          setInviteOpen(nextOpen)
+        }}
+      >
+        <DialogContent
+          onEscapeKeyDown={(event) => event.preventDefault()}
+          onInteractOutside={(event) => event.preventDefault()}
+        >
           <DialogHeader>
             <DialogTitle>Link de registro</DialogTitle>
             <DialogDescription>
@@ -341,7 +378,7 @@ export default function UsersPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4">
+          <div className="space-y-4" aria-busy={inviteLoading}>
             <p className="text-sm text-muted-foreground">
               Genera un enlace de un solo uso para registrar un miembro en esta iglesia. El enlace vence en 12 horas.
             </p>
@@ -367,7 +404,14 @@ export default function UsersPage() {
               onClick={handleCreateInvite}
               disabled={inviteLoading}
             >
-              {inviteLoading ? "Generando..." : "Generar link"}
+              {inviteLoading ? (
+                <>
+                  <LoadingSpinner />
+                  Generando...
+                </>
+              ) : (
+                "Generar link"
+              )}
             </Button>
           </div>
         </DialogContent>

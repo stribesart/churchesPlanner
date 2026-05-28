@@ -6,6 +6,8 @@ import { Eye, EyeOff } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { SubmittingOverlay } from "@/components/ui/submitting-overlay"
 import {
   Card,
   CardContent,
@@ -157,7 +159,9 @@ export default function RegisterPage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 text-slate-900">
       <section className="flex min-h-screen items-center justify-center px-6 py-12">
-        <Card className="w-full max-w-md">
+        <Card className="relative w-full max-w-md">
+          <SubmittingOverlay show={loading} label="Registrando..." />
+
           <CardHeader className="space-y-3 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <span className="text-lg font-semibold">CP</span>
@@ -172,7 +176,12 @@ export default function RegisterPage() {
           </CardHeader>
 
           <CardContent>
-            <form id="register-form" onSubmit={handleRegister} className="space-y-5">
+            <form
+              id="register-form"
+              onSubmit={handleRegister}
+              className="space-y-5"
+              aria-busy={loading}
+            >
               {step === 1 ? (
                 <FieldGroup>
                   <Field>
@@ -389,7 +398,16 @@ export default function RegisterPage() {
               className="w-full sm:flex-1"
               disabled={loading}
             >
-              {step < 2 ? "Siguiente" : loading ? "Registrando..." : "Finalizar registro"}
+              {step < 2 ? (
+                "Siguiente"
+              ) : loading ? (
+                <>
+                  <LoadingSpinner />
+                  Registrando...
+                </>
+              ) : (
+                "Finalizar registro"
+              )}
             </Button>
 
             <Button variant="ghost" asChild className="w-full sm:w-auto">

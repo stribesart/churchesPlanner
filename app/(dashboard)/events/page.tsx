@@ -5,6 +5,7 @@ import EventModal from "@/components/events/event-modal"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { SubmittingOverlay } from "@/components/ui/submitting-overlay"
 import { TypographyH1 } from "@/components/ui/typography"
 import {
   Table,
@@ -60,6 +61,7 @@ export default function EventsPage() {
   const [filterName, setFilterName] = useState("")
   const [filterDate, setFilterDate] = useState("")
   const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
 
   async function fetchEvents() {
     const [eventsRes, ministeriesRes] = await Promise.all([
@@ -108,19 +110,31 @@ export default function EventsPage() {
   })
 
   async function handleDelete(id: string) {
-    const res = await fetch(`/api/events/${id}`, {
-      method: "DELETE",
-    })
+    setSubmitting(true)
 
-    if (res.ok) {
-      fetchEvents()
-    } else {
-      alert("Error al eliminar")
+    try {
+      const res = await fetch(`/api/events/${id}`, {
+        method: "DELETE",
+      })
+
+      if (res.ok) {
+        await fetchEvents()
+      } else {
+        alert("Error al eliminar")
+      }
+    } finally {
+      setSubmitting(false)
     }
   }
 
   return (
     <div>
+      <SubmittingOverlay
+        show={submitting}
+        label="Guardando cambios..."
+        className="fixed z-[70]"
+      />
+
       <TypographyH1 className="mb-6 text-left">
         Eventos
       </TypographyH1>
@@ -128,7 +142,7 @@ export default function EventsPage() {
       <Button onClick={() => {
         setSelectedEvent(null)
         setOpen(true)
-      }}>
+      }} disabled={submitting}>
         + Nuevo evento
       </Button>
 
@@ -209,6 +223,7 @@ export default function EventsPage() {
                                 setSelectedEvent(event)
                                 setOpen(true)
                               }}
+                              disabled={submitting}
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
@@ -221,7 +236,11 @@ export default function EventsPage() {
                           <TooltipTrigger asChild>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button size="icon" variant="destructive">
+                                <Button
+                                  size="icon"
+                                  variant="destructive"
+                                  disabled={submitting}
+                                >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               </AlertDialogTrigger>
@@ -244,6 +263,7 @@ export default function EventsPage() {
 
                                   <AlertDialogAction
                                     onClick={() => handleDelete(event._id)}
+                                    disabled={submitting}
                                   >
                                     Sí, eliminar
                                   </AlertDialogAction>
@@ -273,6 +293,8 @@ export default function EventsPage() {
         event={selectedEvent}
         onSuccess={fetchEvents}
         organizers={organizers}
+        submitting={submitting}
+        onSubmittingChange={setSubmitting}
       />
     </div>
   )

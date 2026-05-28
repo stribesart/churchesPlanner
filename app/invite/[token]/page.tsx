@@ -15,7 +15,9 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { Skeleton } from "@/components/ui/skeleton"
+import { SubmittingOverlay } from "@/components/ui/submitting-overlay"
 import {
   Field,
   FieldDescription,
@@ -165,7 +167,9 @@ export default function InvitePage() {
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 text-slate-900">
       <section className="flex min-h-screen items-center justify-center px-6 py-12">
-        <Card className="w-full max-w-md">
+        <Card className="relative w-full max-w-md">
+          <SubmittingOverlay show={submitting} label="Creando cuenta..." />
+
           <CardHeader className="space-y-3 text-center">
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <span className="text-lg font-semibold">CP</span>
@@ -193,7 +197,7 @@ export default function InvitePage() {
                 </div>
               </div>
             ) : invite ? (
-              <form id="invite-form" onSubmit={handleSubmit}>
+              <form id="invite-form" onSubmit={handleSubmit} aria-busy={submitting}>
                 <FieldGroup>
                   <Field>
                   <FieldLabel>Nombre</FieldLabel>
@@ -315,7 +319,14 @@ export default function InvitePage() {
                   className="w-full"
                   disabled={submitting}
                 >
-                  {submitting ? "Creando cuenta..." : "Crear cuenta"}
+                  {submitting ? (
+                    <>
+                      <LoadingSpinner />
+                      Creando cuenta...
+                    </>
+                  ) : (
+                    "Crear cuenta"
+                  )}
                 </Button>
               ) : (
                 <Button variant="outline" asChild className="w-full">

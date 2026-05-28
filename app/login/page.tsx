@@ -7,6 +7,8 @@ import { Eye, EyeOff } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { SubmittingOverlay } from "@/components/ui/submitting-overlay"
 import {
   Card,
   CardContent,
@@ -65,7 +67,9 @@ export default function LoginPage() {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <section className="flex min-h-screen items-center justify-center px-6 py-12">
-        <Card className="w-full sm:max-w-md">
+        <Card className="relative w-full sm:max-w-md">
+          <SubmittingOverlay show={loading} label="Ingresando..." />
+
           <CardHeader>
             <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground">
               <span className="text-lg font-semibold">CP</span>
@@ -77,7 +81,7 @@ export default function LoginPage() {
           </CardHeader>
 
           <CardContent>
-            <form id="login-form" onSubmit={handleLogin}>
+            <form id="login-form" onSubmit={handleLogin} aria-busy={loading}>
               <FieldGroup>
                 <Field data-invalid={Boolean(error)}>
                   <FieldLabel htmlFor="login-email">
@@ -143,9 +147,16 @@ export default function LoginPage() {
                 type="submit"
                 form="login-form"
                 className="flex-1"
-                disabled={loading}
-              >
-                {loading ? "Ingresando..." : "Iniciar sesión"}
+              disabled={loading}
+            >
+                {loading ? (
+                  <>
+                    <LoadingSpinner />
+                    Ingresando...
+                  </>
+                ) : (
+                  "Iniciar sesión"
+                )}
               </Button>
             </Field>
           </CardFooter>

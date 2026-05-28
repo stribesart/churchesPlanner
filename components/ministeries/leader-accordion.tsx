@@ -21,6 +21,7 @@ type LeaderAccordionProps = {
   leaders: Leader[]
   value: string
   onValueChange: (value: string) => void
+  invalid?: boolean
 }
 
 function getLeaderLabel(leader?: Leader) {
@@ -42,12 +43,21 @@ function LeaderAccordion({
   leaders,
   value,
   onValueChange,
+  invalid = false,
 }: LeaderAccordionProps) {
   const selectedLeader = leaders.find((leader) => leader._id === value)
   const selectedLabel = getLeaderLabel(selectedLeader)
 
   return (
-    <Accordion type="single" collapsible className="rounded-lg border">
+    <Accordion
+      type="single"
+      collapsible
+      aria-invalid={invalid}
+      className={cn(
+        "rounded-lg border",
+        invalid && "border-destructive ring-3 ring-destructive/20"
+      )}
+    >
       <AccordionItem value="leaders" className="border-b-0 px-3">
         <AccordionTrigger className="hover:no-underline">
           {selectedLabel}

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import type { Leader } from "@/components/ministeries/leader-accordion"
 import MinistryModal from "@/components/ministeries/ministry-modal"
+import { SubmittingOverlay } from "@/components/ui/submitting-overlay"
 import { Button } from "@/components/ui/button"
 import { TypographyH1 } from "@/components/ui/typography"
 import {
@@ -56,6 +57,7 @@ export default function MinisteriesPage() {
   const [open, setOpen] = useState(false)
   const [selectedMinistry, setSelectedMinistry] = useState<Ministry | null>(null)
   const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
 
   async function fetchMinisteries() {
     const [ministeriesRes, usersRes] = await Promise.all([
@@ -95,14 +97,20 @@ export default function MinisteriesPage() {
   }, [])
 
   async function handleDelete(id: string) {
-    const res = await fetch(`/api/ministeries/${id}`, {
-      method: "DELETE",
-    })
+    setSubmitting(true)
 
-    if (res.ok) {
-      fetchMinisteries()
-    } else {
-      alert("Error al eliminar")
+    try {
+      const res = await fetch(`/api/ministeries/${id}`, {
+        method: "DELETE",
+      })
+
+      if (res.ok) {
+        await fetchMinisteries()
+      } else {
+        alert("Error al eliminar")
+      }
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -115,6 +123,12 @@ export default function MinisteriesPage() {
 
   return (
     <div>
+      <SubmittingOverlay
+        show={submitting}
+        label="Guardando cambios..."
+        className="fixed z-[70]"
+      />
+
       <TypographyH1 className="mb-6 text-left">
         Ministerios
       </TypographyH1>
@@ -122,7 +136,7 @@ export default function MinisteriesPage() {
       <Button onClick={() => {
         setSelectedMinistry(null)
         setOpen(true)
-      }}>
+      }} disabled={submitting}>
         + Nuevo ministerio
       </Button>
 
@@ -157,6 +171,7 @@ export default function MinisteriesPage() {
                               setSelectedMinistry(ministry)
                               setOpen(true)
                             }}
+                            disabled={submitting}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
@@ -169,7 +184,11 @@ export default function MinisteriesPage() {
                         <TooltipTrigger asChild>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
-                              <Button size="icon" variant="destructive">
+                              <Button
+                                size="icon"
+                                variant="destructive"
+                                disabled={submitting}
+                              >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </AlertDialogTrigger>
@@ -192,6 +211,7 @@ export default function MinisteriesPage() {
 
                                 <AlertDialogAction
                                   onClick={() => handleDelete(ministry._id)}
+                                  disabled={submitting}
                                 >
                                   Sí, eliminar
                                 </AlertDialogAction>
@@ -219,6 +239,8 @@ export default function MinisteriesPage() {
         ministry={selectedMinistry}
         leaders={leaders}
         onSuccess={fetchMinisteries}
+        submitting={submitting}
+        onSubmittingChange={setSubmitting}
       />
     </div>
   )

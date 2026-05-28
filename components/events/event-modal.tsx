@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { Textarea } from "@/components/ui/textarea"
 import { FieldError } from "@/components/ui/field"
 import {
@@ -42,9 +43,11 @@ type Event = {
 type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSuccess: () => void
+  onSuccess: () => Promise<void> | void
   event?: Event | null
   organizers: User[]
+  submitting: boolean
+  onSubmittingChange: (submitting: boolean) => void
 }
 
 export default function EventModal({
@@ -53,7 +56,14 @@ export default function EventModal({
   onSuccess,
   event,
   organizers,
+  submitting,
+  onSubmittingChange,
 }: Props) {
+  function handleOpenChange(nextOpen: boolean) {
+    if (submitting && !nextOpen) return
+
+    onOpenChange(nextOpen)
+  }
 
   const isEdit = !!event
 
@@ -65,7 +75,6 @@ export default function EventModal({
   const [location, setLocation] = useState(event?.location ?? "")
   const [organizer, setOrganizer] = useState<string>(event?.organizer ?? "")
   const [error, setError] = useState("")
-  const [saving, setSaving] = useState(false)
 
   async function handleSubmit() {
     setError("")
@@ -115,38 +124,46 @@ export default function EventModal({
 
     const method = isEdit ? "PUT" : "POST"
 
-    setSaving(true)
+    onSubmittingChange(true)
 
-    const res = await fetch(url, {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: trimmedName,
-        description: trimmedDescription,
-        date,
-        startTime,
-        endTime,
-        location: trimmedLocation,
-        organizer,
-      }),
-    })
-    const data = await res.json()
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: trimmedName,
+          description: trimmedDescription,
+          date,
+          startTime,
+          endTime,
+          location: trimmedLocation,
+          organizer,
+        }),
+      })
+      const data = await res.json()
 
-    setSaving(false)
-
-    if (res.ok) {
-      onSuccess()
-      onOpenChange(false)
-    } else {
-      setError(data?.message || "No se pudo guardar el evento. Intenta de nuevo.")
+      if (res.ok) {
+        await onSuccess()
+        onOpenChange(false)
+      } else {
+        setError(data?.message || "No se pudo guardar el evento. Intenta de nuevo.")
+      }
+    } catch {
+      setError("No se pudo guardar el evento. Intenta de nuevo.")
+    } finally {
+      onSubmittingChange(false)
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent
+        className="max-w-2xl"
+        onEscapeKeyDown={(event) => event.preventDefault()}
+        onInteractOutside={(event) => event.preventDefault()}
+      >
 
         <DialogHeader>
           <DialogTitle>
@@ -157,7 +174,7 @@ export default function EventModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 max-h-96 overflow-y-auto">
+        <div className="space-y-4 max-h-96 overflow-y-auto" aria-busy={submitting}>
 
           <div>
             <Label>Nombre del evento</Label>
@@ -211,8 +228,17 @@ export default function EventModal({
 
           <FieldError>{error}</FieldError>
 
-          <Button onClick={handleSubmit} className="w-full" disabled={saving}>
-            {saving ? "Guardando..." : isEdit ? "Actualizar" : "Crear"}
+          <Button onClick={handleSubmit} className="w-full" disabled={submitting}>
+            {submitting ? (
+              <>
+                <LoadingSpinner />
+                Guardando...
+              </>
+            ) : isEdit ? (
+              "Actualizar"
+            ) : (
+              "Crear"
+            )}
           </Button>
 
         </div>

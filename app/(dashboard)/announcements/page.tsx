@@ -5,6 +5,7 @@ import AnnouncementModal from "@/components/announcements/announcement-modal"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { SubmittingOverlay } from "@/components/ui/submitting-overlay"
 import { TypographyH1 } from "@/components/ui/typography"
 import {
   Table,
@@ -49,6 +50,7 @@ export default function AnnouncementsPage() {
   const [filterTitle, setFilterTitle] = useState("")
   const [filterDate, setFilterDate] = useState("")
   const [loading, setLoading] = useState(true)
+  const [submitting, setSubmitting] = useState(false)
 
   async function fetchAnnouncements() {
     const res = await fetch("/api/announcements")
@@ -100,19 +102,31 @@ export default function AnnouncementsPage() {
   })
 
   async function handleDelete(id: string) {
-    const res = await fetch(`/api/announcements/${id}`, {
-      method: "DELETE",
-    })
+    setSubmitting(true)
 
-    if (res.ok) {
-      fetchAnnouncements()
-    } else {
-      alert("Error al eliminar")
+    try {
+      const res = await fetch(`/api/announcements/${id}`, {
+        method: "DELETE",
+      })
+
+      if (res.ok) {
+        await fetchAnnouncements()
+      } else {
+        alert("Error al eliminar")
+      }
+    } finally {
+      setSubmitting(false)
     }
   }
 
   return (
     <div>
+      <SubmittingOverlay
+        show={submitting}
+        label="Guardando cambios..."
+        className="fixed z-[70]"
+      />
+
       <TypographyH1 className="mb-6 text-left">
         Anuncios
       </TypographyH1>
@@ -120,7 +134,7 @@ export default function AnnouncementsPage() {
       <Button onClick={() => {
         setSelectedAnnouncement(null)
         setOpen(true)
-      }}>
+      }} disabled={submitting}>
         + Nuevo anuncio
       </Button>
 
@@ -197,6 +211,7 @@ export default function AnnouncementsPage() {
                                 setSelectedAnnouncement(announcement)
                                 setOpen(true)
                               }}
+                              disabled={submitting}
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
@@ -209,7 +224,11 @@ export default function AnnouncementsPage() {
                           <TooltipTrigger asChild>
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
-                                <Button size="icon" variant="destructive">
+                                <Button
+                                  size="icon"
+                                  variant="destructive"
+                                  disabled={submitting}
+                                >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
                               </AlertDialogTrigger>
@@ -232,6 +251,7 @@ export default function AnnouncementsPage() {
 
                                   <AlertDialogAction
                                     onClick={() => handleDelete(announcement._id)}
+                                    disabled={submitting}
                                   >
                                     Sí, eliminar
                                   </AlertDialogAction>
@@ -260,6 +280,8 @@ export default function AnnouncementsPage() {
         onOpenChange={setOpen}
         announcement={selectedAnnouncement}
         onSuccess={fetchAnnouncements}
+        submitting={submitting}
+        onSubmittingChange={setSubmitting}
       />
     </div>
   )

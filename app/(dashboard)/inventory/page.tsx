@@ -31,6 +31,8 @@ import {
   FieldLabel,
 } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { SubmittingOverlay } from "@/components/ui/submitting-overlay"
 import {
   Select,
   SelectContent,
@@ -147,6 +149,7 @@ export default function InventoryPage() {
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null)
   const [loading, setLoading] = useState(true)
   const [pageError, setPageError] = useState("")
+  const [submitting, setSubmitting] = useState(false)
 
   const leader = isLeaderRole(currentUser?.role)
   const currentMinistryId =
@@ -216,15 +219,21 @@ export default function InventoryPage() {
   }, [])
 
   async function handleDelete(id: string) {
-    const res = await fetch(`/api/inventory/${id}`, {
-      method: "DELETE",
-    })
+    setSubmitting(true)
 
-    if (res.ok) {
-      fetchInventoryPage()
-    } else {
-      const data = await res.json()
-      alert(data?.message || "Error al eliminar")
+    try {
+      const res = await fetch(`/api/inventory/${id}`, {
+        method: "DELETE",
+      })
+
+      if (res.ok) {
+        await fetchInventoryPage()
+      } else {
+        const data = await res.json()
+        alert(data?.message || "Error al eliminar")
+      }
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -234,6 +243,12 @@ export default function InventoryPage() {
 
   return (
     <div>
+      <SubmittingOverlay
+        show={submitting}
+        label="Guardando cambios..."
+        className="fixed z-[70]"
+      />
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <TypographyH1 className="text-left">Inventario</TypographyH1>
@@ -246,6 +261,7 @@ export default function InventoryPage() {
             setSelectedItem(null)
             setOpen(true)
           }}
+          disabled={submitting}
         >
           + Nuevo recurso
         </Button>
@@ -309,7 +325,7 @@ export default function InventoryPage() {
                         <Button
                           size="icon"
                           variant="outline"
-                          disabled={!canEdit}
+                          disabled={!canEdit || submitting}
                           onClick={() => {
                             setSelectedItem(item)
                             setOpen(true)
@@ -319,7 +335,11 @@ export default function InventoryPage() {
                         </Button>
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
-                            <Button size="icon" variant="destructive" disabled={!canEdit}>
+                            <Button
+                              size="icon"
+                              variant="destructive"
+                              disabled={!canEdit || submitting}
+                            >
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </AlertDialogTrigger>
@@ -332,7 +352,10 @@ export default function InventoryPage() {
                             </p>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => handleDelete(item._id)}>
+                              <AlertDialogAction
+                                onClick={() => handleDelete(item._id)}
+                                disabled={submitting}
+                              >
                                 Sí, eliminar
                               </AlertDialogAction>
                             </AlertDialogFooter>
@@ -362,6 +385,8 @@ export default function InventoryPage() {
             : "tu ministerio"
         }
         onSuccess={fetchInventoryPage}
+        submitting={submitting}
+        onSubmittingChange={setSubmitting}
       />
     </div>
   )
@@ -377,6 +402,8 @@ function InventoryDialog({
   currentMinistryId,
   currentMinistryName,
   onSuccess,
+  submitting,
+  onSubmittingChange,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -386,10 +413,18 @@ function InventoryDialog({
   leader: boolean
   currentMinistryId: string | null
   currentMinistryName: string
-  onSuccess: () => void
+  onSuccess: () => Promise<void> | void
+  submitting: boolean
+  onSubmittingChange: (submitting: boolean) => void
 }) {
+  function handleOpenChange(nextOpen: boolean) {
+    if (submitting && !nextOpen) return
+
+    onOpenChange(nextOpen)
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <InventoryForm
         key={`${item?._id || "new"}-${open ? "open" : "closed"}`}
         onOpenChange={onOpenChange}
@@ -400,6 +435,8 @@ function InventoryDialog({
         currentMinistryId={currentMinistryId}
         currentMinistryName={currentMinistryName}
         onSuccess={onSuccess}
+        submitting={submitting}
+        onSubmittingChange={onSubmittingChange}
       />
     </Dialog>
   )
@@ -414,6 +451,8 @@ function InventoryForm({
   currentMinistryId,
   currentMinistryName,
   onSuccess,
+  submitting,
+  onSubmittingChange,
 }: {
   onOpenChange: (open: boolean) => void
   item: InventoryItem | null
@@ -422,7 +461,9 @@ function InventoryForm({
   leader: boolean
   currentMinistryId: string | null
   currentMinistryName: string
-  onSuccess: () => void
+  onSuccess: () => Promise<void> | void
+  submitting: boolean
+  onSubmittingChange: (submitting: boolean) => void
 }) {
   const [name, setName] = useState(item?.name || "")
   const [quantity, setQuantity] = useState(String(item?.quantity ?? 1))
@@ -435,7 +476,6 @@ function InventoryForm({
   const [assignedTo, setAssignedTo] = useState(item?.assignedTo || noneValue)
   const [notes, setNotes] = useState(item?.notes || "")
   const [error, setError] = useState("")
-  const [saving, setSaving] = useState(false)
   const isEdit = Boolean(item)
 
   async function handleSubmit() {
@@ -456,7 +496,7 @@ function InventoryForm({
       return
     }
 
-    setSaving(true)
+    onSubmittingChange(true)
 
     const resolvedMinistryId = leader
       ? currentMinistryId
@@ -464,37 +504,45 @@ function InventoryForm({
         ? null
         : ministryId
 
-    const res = await fetch(isEdit ? `/api/inventory/${item?._id}` : "/api/inventory", {
-      method: isEdit ? "PUT" : "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: trimmedName,
-        quantity: parsedQuantity,
-        condition,
-        status,
-        location: trimmedLocation,
-        ministryId: resolvedMinistryId,
-        assignedTo: assignedTo === noneValue ? null : assignedTo,
-        notes: trimmedNotes,
-      }),
-    })
-    const data = await res.json()
+    try {
+      const res = await fetch(isEdit ? `/api/inventory/${item?._id}` : "/api/inventory", {
+        method: isEdit ? "PUT" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: trimmedName,
+          quantity: parsedQuantity,
+          condition,
+          status,
+          location: trimmedLocation,
+          ministryId: resolvedMinistryId,
+          assignedTo: assignedTo === noneValue ? null : assignedTo,
+          notes: trimmedNotes,
+        }),
+      })
+      const data = await res.json()
 
-    setSaving(false)
+      if (res.ok) {
+        await onSuccess()
+        onOpenChange(false)
+        return
+      }
 
-    if (res.ok) {
-      onSuccess()
-      onOpenChange(false)
-      return
+      setError(data?.message || "Error al guardar")
+    } catch {
+      setError("Error al guardar")
+    } finally {
+      onSubmittingChange(false)
     }
-
-    setError(data?.message || "Error al guardar")
   }
 
   return (
-    <DialogContent className="sm:max-w-2xl">
+    <DialogContent
+      className="sm:max-w-2xl"
+      onEscapeKeyDown={(event) => event.preventDefault()}
+      onInteractOutside={(event) => event.preventDefault()}
+    >
       <DialogHeader>
         <DialogTitle>{isEdit ? "Editar recurso" : "Nuevo recurso"}</DialogTitle>
         <DialogDescription>
@@ -502,7 +550,7 @@ function InventoryForm({
         </DialogDescription>
       </DialogHeader>
 
-      <FieldGroup className="max-h-[70vh] overflow-y-auto pr-1">
+      <FieldGroup className="max-h-[70vh] overflow-y-auto pr-1" aria-busy={submitting}>
         <Field>
           <FieldLabel>Nombre</FieldLabel>
           <Input
@@ -621,11 +669,24 @@ function InventoryForm({
       </FieldGroup>
 
       <DialogFooter>
-        <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <Button
+          variant="outline"
+          onClick={() => onOpenChange(false)}
+          disabled={submitting}
+        >
           Cancelar
         </Button>
-        <Button onClick={handleSubmit} disabled={saving}>
-          {saving ? "Guardando..." : isEdit ? "Actualizar" : "Crear"}
+        <Button onClick={handleSubmit} disabled={submitting}>
+          {submitting ? (
+            <>
+              <LoadingSpinner />
+              Guardando...
+            </>
+          ) : isEdit ? (
+            "Actualizar"
+          ) : (
+            "Crear"
+          )}
         </Button>
       </DialogFooter>
     </DialogContent>

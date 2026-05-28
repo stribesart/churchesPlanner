@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Label } from "@/components/ui/label"
 import { FieldError } from "@/components/ui/field"
@@ -46,9 +47,11 @@ type UserFieldErrors = Partial<Record<UserField, string>>
 type Props = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSuccess: () => void
+  onSuccess: () => Promise<void> | void
   currentUserRole?: string
   user?: User | null
+  submitting: boolean
+  onSubmittingChange: (submitting: boolean) => void
 }
 
 function isLeaderRole(role?: string) {
@@ -63,15 +66,25 @@ export default function UserModal({
   onSuccess,
   currentUserRole,
   user,
+  submitting,
+  onSubmittingChange,
 }: Props) {
+  function handleOpenChange(nextOpen: boolean) {
+    if (submitting && !nextOpen) return
+
+    onOpenChange(nextOpen)
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <UserModalForm
         key={`${user?._id ?? "create"}-${open ? "open" : "closed"}`}
         onOpenChange={onOpenChange}
         onSuccess={onSuccess}
         currentUserRole={currentUserRole}
         user={user}
+        submitting={submitting}
+        onSubmittingChange={onSubmittingChange}
       />
     </Dialog>
   )
@@ -82,7 +95,17 @@ function UserModalForm({
   onSuccess,
   currentUserRole,
   user,
-}: Pick<Props, "onOpenChange" | "onSuccess" | "currentUserRole" | "user">) {
+  submitting,
+  onSubmittingChange,
+}: Pick<
+  Props,
+  | "onOpenChange"
+  | "onSuccess"
+  | "currentUserRole"
+  | "user"
+  | "submitting"
+  | "onSubmittingChange"
+>) {
   const isEdit = !!user
   const isCurrentUserLeader = isLeaderRole(currentUserRole)
   const roleOptions: readonly UserRole[] =
@@ -100,7 +123,6 @@ function UserModalForm({
   const [rolesLoading, setRolesLoading] = useState(false)
   const [error, setError] = useState("")
   const [fieldErrors, setFieldErrors] = useState<UserFieldErrors>({})
-  const [saving, setSaving] = useState(false)
 
   async function fetchMinistryRoles() {
     if (!isCurrentUserLeader) {
@@ -168,30 +190,34 @@ function UserModalForm({
 
     const method = isEdit ? "PUT" : "POST"
 
-    setSaving(true)
+    onSubmittingChange(true)
 
-    const res = await fetch(url, {
-      method,
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: trimmedName,
-        email: trimmedEmail,
-        password: trimmedPassword,
-        role: isCurrentUserLeader ? "miembro colaborador" : role,
-        ministryRoleId: isCurrentUserLeader ? ministryRoleId : undefined,
-      }),
-    })
-    const data = await res.json()
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: trimmedName,
+          email: trimmedEmail,
+          password: trimmedPassword,
+          role: isCurrentUserLeader ? "miembro colaborador" : role,
+          ministryRoleId: isCurrentUserLeader ? ministryRoleId : undefined,
+        }),
+      })
+      const data = await res.json()
 
-    setSaving(false)
-
-    if (res.ok) {
-      onSuccess()
-      onOpenChange(false)
-    } else {
-      setError(data?.message || "No se pudo guardar el usuario. Intenta de nuevo.")
+      if (res.ok) {
+        await onSuccess()
+        onOpenChange(false)
+      } else {
+        setError(data?.message || "No se pudo guardar el usuario. Intenta de nuevo.")
+      }
+    } catch {
+      setError("No se pudo guardar el usuario. Intenta de nuevo.")
+    } finally {
+      onSubmittingChange(false)
     }
   }
 
@@ -209,6 +235,8 @@ function UserModalForm({
 
   return (
     <DialogContent
+      onEscapeKeyDown={(event) => event.preventDefault()}
+      onInteractOutside={(event) => event.preventDefault()}
       onOpenAutoFocus={() => {
         fetchMinistryRoles()
       }}
@@ -222,7 +250,7 @@ function UserModalForm({
         </DialogDescription>
       </DialogHeader>
 
-      <div className="space-y-4">
+      <div className="space-y-4" aria-busy={submitting}>
         <div>
           <Label>Nombre</Label>
           <Input
@@ -337,9 +365,18 @@ function UserModalForm({
         <Button
           onClick={handleSubmit}
           className="w-full"
-          disabled={saving || (isCurrentUserLeader && ministryRoles.length === 0)}
+          disabled={submitting || (isCurrentUserLeader && ministryRoles.length === 0)}
         >
-          {saving ? "Guardando..." : isEdit ? "Actualizar" : "Crear"}
+          {submitting ? (
+            <>
+              <LoadingSpinner />
+              Guardando...
+            </>
+          ) : isEdit ? (
+            "Actualizar"
+          ) : (
+            "Crear"
+          )}
         </Button>
       </div>
     </DialogContent>

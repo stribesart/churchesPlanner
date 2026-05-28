@@ -26,11 +26,13 @@ type MinistryRole = {
 type Props = {
   ministryId?: string | null
   onRolesChange?: (roles: MinistryRole[]) => void
+  onSubmittingChange?: (submitting: boolean) => void
 }
 
 export default function MinistryRolesManager({
   ministryId,
   onRolesChange,
+  onSubmittingChange,
 }: Props) {
   const [roles, setRoles] = useState<MinistryRole[]>([])
   const [name, setName] = useState("")
@@ -99,24 +101,30 @@ export default function MinistryRolesManager({
     setError("")
     setSuccess("")
 
-    const res = await fetch("/api/ministry-roles", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: trimmedName,
-        ministryId,
-      }),
-    })
+    onSubmittingChange?.(true)
 
-    if (res.ok) {
-      setName("")
-      setSuccess("Rol creado correctamente.")
-      fetchRoles()
-    } else {
-      const data = await res.json()
-      setError(data?.message || "Error al crear rol")
+    try {
+      const res = await fetch("/api/ministry-roles", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: trimmedName,
+          ministryId,
+        }),
+      })
+
+      if (res.ok) {
+        setName("")
+        setSuccess("Rol creado correctamente.")
+        await fetchRoles()
+      } else {
+        const data = await res.json()
+        setError(data?.message || "Error al crear rol")
+      }
+    } finally {
+      onSubmittingChange?.(false)
     }
   }
 
@@ -130,24 +138,30 @@ export default function MinistryRolesManager({
     setError("")
     setSuccess("")
 
-    const res = await fetch(`/api/ministry-roles/${roleId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: trimmedEditingName,
-      }),
-    })
+    onSubmittingChange?.(true)
 
-    if (res.ok) {
-      setEditingRoleId("")
-      setEditingName("")
-      setSuccess("Rol actualizado correctamente.")
-      fetchRoles()
-    } else {
-      const data = await res.json()
-      setError(data?.message || "Error al actualizar rol")
+    try {
+      const res = await fetch(`/api/ministry-roles/${roleId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: trimmedEditingName,
+        }),
+      })
+
+      if (res.ok) {
+        setEditingRoleId("")
+        setEditingName("")
+        setSuccess("Rol actualizado correctamente.")
+        await fetchRoles()
+      } else {
+        const data = await res.json()
+        setError(data?.message || "Error al actualizar rol")
+      }
+    } finally {
+      onSubmittingChange?.(false)
     }
   }
 
@@ -161,16 +175,22 @@ export default function MinistryRolesManager({
     setError("")
     setSuccess("")
 
-    const res = await fetch(`/api/ministry-roles/${roleId}`, {
-      method: "DELETE",
-    })
+    onSubmittingChange?.(true)
 
-    if (res.ok) {
-      setSuccess("Rol eliminado correctamente.")
-      fetchRoles()
-    } else {
-      const data = await res.json()
-      setError(data?.message || "Error al eliminar rol")
+    try {
+      const res = await fetch(`/api/ministry-roles/${roleId}`, {
+        method: "DELETE",
+      })
+
+      if (res.ok) {
+        setSuccess("Rol eliminado correctamente.")
+        await fetchRoles()
+      } else {
+        const data = await res.json()
+        setError(data?.message || "Error al eliminar rol")
+      }
+    } finally {
+      onSubmittingChange?.(false)
     }
   }
 
