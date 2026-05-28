@@ -157,7 +157,7 @@ export default function AnnouncementsPage() {
       </div>
 
       <div className="bg-white rounded-lg border mt-4">
-        <Table>
+        <Table containerClassName="max-h-[60vh]">
           <TableHeader>
             <TableRow>
               <TableHead>Título</TableHead>

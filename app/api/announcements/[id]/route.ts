@@ -2,6 +2,18 @@ import { NextResponse } from "next/server"
 import { getTenantFromRequest, getTenantDbByName } from "@/lib/tenant"
 import { ObjectId } from "mongodb"
 
+function parseAnnouncementInput(body: Record<string, unknown>) {
+  const title = typeof body.title === "string" ? body.title.trim() : ""
+  const content = typeof body.content === "string" ? body.content.trim() : ""
+  const author = typeof body.author === "string" ? body.author.trim() : ""
+
+  if (!title) return { ok: false as const, message: "El título es obligatorio" }
+  if (!content) return { ok: false as const, message: "El contenido es obligatorio" }
+  if (!author) return { ok: false as const, message: "El autor es obligatorio" }
+
+  return { ok: true as const, announcement: { title, content, author } }
+}
+
 export async function PUT(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -17,18 +29,25 @@ export async function PUT(
       )
     }
 
-    const { title, content, author } = await req.json()
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json(
+        { message: "Anuncio no válido" },
+        { status: 400 }
+      )
+    }
+
+    const body = await req.json()
+    const parsed = parseAnnouncementInput(body)
+
+    if (!parsed.ok) {
+      return NextResponse.json({ message: parsed.message }, { status: 400 })
+    }
+
     const db = await getTenantDbByName(tenantDbName)
-
-    const updateData: { title?: string; content?: string; author?: string } = {}
-
-    if (title !== undefined) updateData.title = title
-    if (content !== undefined) updateData.content = content
-    if (author !== undefined) updateData.author = author
 
     const result = await db.collection("announcements").updateOne(
       { _id: new ObjectId(id) },
-      { $set: updateData }
+      { $set: parsed.announcement }
     )
 
     if (result.matchedCount === 0) {
@@ -65,6 +84,13 @@ export async function DELETE(
     }
 
     const db = await getTenantDbByName(tenantDbName)
+
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json(
+        { message: "Anuncio no válido" },
+        { status: 400 }
+      )
+    }
 
     const result = await db.collection("announcements").deleteOne({
       _id: new ObjectId(id),

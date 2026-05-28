@@ -133,6 +133,8 @@ export default function DashboardPage() {
     offerings: [],
   })
   const [loading, setLoading] = useState(true)
+  const [dashboardTab, setDashboardTab] = useState("administration")
+  const [analyticsTab, setAnalyticsTab] = useState("users")
 
   useEffect(() => {
     let ignore = false
@@ -223,6 +225,10 @@ export default function DashboardPage() {
     data.user?.displayName || data.user?.name || data.user?.email || "usuario"
   const role = formatRole(data.user?.role)
   const canSeeAnalytics = isAdminDashboardRole(data.user?.role)
+  const activeDashboardTab =
+    canSeeAnalytics && dashboardTab === "administration"
+      ? "administration"
+      : "community"
 
   if (loading) {
     return (
@@ -257,7 +263,8 @@ export default function DashboardPage() {
       </section>
 
       <Tabs
-        defaultValue={canSeeAnalytics ? "administration" : "community"}
+        value={activeDashboardTab}
+        onValueChange={setDashboardTab}
         className="w-full gap-4"
       >
         <TabsList className="inline-grid w-full grid-flow-col auto-cols-fr sm:w-fit sm:auto-cols-auto">
@@ -363,16 +370,26 @@ export default function DashboardPage() {
               </Card>
             </section>
 
-            <Tabs defaultValue="users" className="w-full gap-4">
+            <Tabs
+              value={analyticsTab}
+              onValueChange={setAnalyticsTab}
+              className="w-full gap-4"
+            >
               <TabsList className="w-full sm:w-fit">
                 <TabsTrigger value="users">Usuarios</TabsTrigger>
                 <TabsTrigger value="offerings">Ofrendas</TabsTrigger>
               </TabsList>
               <TabsContent value="users">
-                <UsersCreatedChart users={data.users} />
+                {activeDashboardTab === "administration" &&
+                analyticsTab === "users" ? (
+                  <UsersCreatedChart users={data.users} />
+                ) : null}
               </TabsContent>
               <TabsContent value="offerings">
-                <OfferingsChart offerings={data.offerings} />
+                {activeDashboardTab === "administration" &&
+                analyticsTab === "offerings" ? (
+                  <OfferingsChart offerings={data.offerings} />
+                ) : null}
               </TabsContent>
             </Tabs>
           </TabsContent>

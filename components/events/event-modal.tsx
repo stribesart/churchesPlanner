@@ -5,12 +5,14 @@ import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { FieldError } from "@/components/ui/field"
 import {
   Select,
   SelectContent,
@@ -62,27 +64,83 @@ export default function EventModal({
   const [endTime, setEndTime] = useState(event?.endTime ?? "")
   const [location, setLocation] = useState(event?.location ?? "")
   const [organizer, setOrganizer] = useState<string>(event?.organizer ?? "")
+  const [error, setError] = useState("")
+  const [saving, setSaving] = useState(false)
 
   async function handleSubmit() {
+    setError("")
+
+    const trimmedName = name.trim()
+    const trimmedDescription = description.trim()
+    const trimmedLocation = location.trim()
+
+    if (!trimmedName) {
+      setError("El nombre del evento es obligatorio.")
+      return
+    }
+
+    if (!date) {
+      setError("Selecciona la fecha del evento.")
+      return
+    }
+
+    if (!startTime) {
+      setError("Selecciona la hora de inicio.")
+      return
+    }
+
+    if (!endTime) {
+      setError("Selecciona la hora de fin.")
+      return
+    }
+
+    if (startTime >= endTime) {
+      setError("La hora de fin debe ser posterior a la hora de inicio.")
+      return
+    }
+
+    if (!trimmedLocation) {
+      setError("La ubicación es obligatoria.")
+      return
+    }
+
+    if (!organizer) {
+      setError("Selecciona un organizador.")
+      return
+    }
+
     const url = isEdit
       ? `/api/events/${event?._id}`
       : "/api/events"
 
     const method = isEdit ? "PUT" : "POST"
 
+    setSaving(true)
+
     const res = await fetch(url, {
       method,
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ name, description, date, startTime, endTime, location, organizer }),
+      body: JSON.stringify({
+        name: trimmedName,
+        description: trimmedDescription,
+        date,
+        startTime,
+        endTime,
+        location: trimmedLocation,
+        organizer,
+      }),
     })
+    const data = await res.json()
+
+    setSaving(false)
 
     if (res.ok) {
       onSuccess()
       onOpenChange(false)
     } else {
-      alert("Error")
+      setError(data?.message || "No se pudo guardar el evento. Intenta de nuevo.")
     }
   }
 
@@ -94,6 +152,9 @@ export default function EventModal({
           <DialogTitle>
             {isEdit ? "Editar evento" : "Crear evento"}
           </DialogTitle>
+          <DialogDescription>
+            Define la fecha, horario, ubicación y organizador del evento.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 max-h-96 overflow-y-auto">
@@ -148,8 +209,10 @@ export default function EventModal({
             </Select>
           </div>
 
-          <Button onClick={handleSubmit} className="w-full">
-            {isEdit ? "Actualizar" : "Crear"}
+          <FieldError>{error}</FieldError>
+
+          <Button onClick={handleSubmit} className="w-full" disabled={saving}>
+            {saving ? "Guardando..." : isEdit ? "Actualizar" : "Crear"}
           </Button>
 
         </div>

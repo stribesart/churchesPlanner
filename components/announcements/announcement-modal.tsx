@@ -5,12 +5,14 @@ import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { FieldError } from "@/components/ui/field"
 
 type Announcement = {
   _id?: string
@@ -38,27 +40,59 @@ export default function AnnouncementModal({
   const [title, setTitle] = useState(announcement?.title ?? "")
   const [content, setContent] = useState(announcement?.content ?? "")
   const [author, setAuthor] = useState(announcement?.author ?? "")
+  const [error, setError] = useState("")
+  const [saving, setSaving] = useState(false)
 
   async function handleSubmit() {
+    setError("")
+
+    const trimmedTitle = title.trim()
+    const trimmedContent = content.trim()
+    const trimmedAuthor = author.trim()
+
+    if (!trimmedTitle) {
+      setError("El título es obligatorio.")
+      return
+    }
+
+    if (!trimmedContent) {
+      setError("El contenido es obligatorio.")
+      return
+    }
+
+    if (!trimmedAuthor) {
+      setError("El autor es obligatorio.")
+      return
+    }
+
     const url = isEdit
       ? `/api/announcements/${announcement?._id}`
       : "/api/announcements"
 
     const method = isEdit ? "PUT" : "POST"
 
+    setSaving(true)
+
     const res = await fetch(url, {
       method,
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ title, content, author }),
+      body: JSON.stringify({
+        title: trimmedTitle,
+        content: trimmedContent,
+        author: trimmedAuthor,
+      }),
     })
+    const data = await res.json()
+
+    setSaving(false)
 
     if (res.ok) {
       onSuccess()
       onOpenChange(false)
     } else {
-      alert("Error")
+      setError(data?.message || "No se pudo guardar el anuncio. Intenta de nuevo.")
     }
   }
 
@@ -70,6 +104,9 @@ export default function AnnouncementModal({
           <DialogTitle>
             {isEdit ? "Editar anuncio" : "Crear anuncio"}
           </DialogTitle>
+          <DialogDescription>
+            Completa la información que verá la comunidad.
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -89,8 +126,10 @@ export default function AnnouncementModal({
             <Input value={author} onChange={(e) => setAuthor(e.target.value)} />
           </div>
 
-          <Button onClick={handleSubmit} className="w-full">
-            {isEdit ? "Actualizar" : "Crear"}
+          <FieldError>{error}</FieldError>
+
+          <Button onClick={handleSubmit} className="w-full" disabled={saving}>
+            {saving ? "Guardando..." : isEdit ? "Actualizar" : "Crear"}
           </Button>
 
         </div>

@@ -28,6 +28,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -212,7 +213,7 @@ export default function UsersPage() {
       </div>
 
       <div className="bg-white rounded-lg border mt-4">
-        <Table>
+        <Table containerClassName="max-h-[60vh]">
           <TableHeader>
             <TableRow>
               <TableHead>Nombre</TableHead>
@@ -326,6 +327,9 @@ export default function UsersPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Link de registro</DialogTitle>
+            <DialogDescription>
+              Genera un enlace temporal para registrar un miembro en esta iglesia.
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">

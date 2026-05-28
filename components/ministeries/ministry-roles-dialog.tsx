@@ -43,6 +43,7 @@ export default function MinistryRolesDialog({
   const [editingName, setEditingName] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
 
   const ministryId = ministry?.ministryId || ministry?._id || ""
 
@@ -69,11 +70,14 @@ export default function MinistryRolesDialog({
   }
 
   async function handleCreateRole() {
-    if (!name.trim() || !ministryId) {
+    const trimmedName = name.trim()
+
+    if (!trimmedName || !ministryId) {
       return
     }
 
     setError("")
+    setSuccess("")
 
     const res = await fetch("/api/ministry-roles", {
       method: "POST",
@@ -81,13 +85,14 @@ export default function MinistryRolesDialog({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        name,
+        name: trimmedName,
         ministryId,
       }),
     })
 
     if (res.ok) {
       setName("")
+      setSuccess("Rol creado correctamente.")
       fetchRoles()
     } else {
       const data = await res.json()
@@ -96,11 +101,14 @@ export default function MinistryRolesDialog({
   }
 
   async function handleUpdateRole(roleId: string) {
-    if (!editingName.trim()) {
+    const trimmedEditingName = editingName.trim()
+
+    if (!trimmedEditingName) {
       return
     }
 
     setError("")
+    setSuccess("")
 
     const res = await fetch(`/api/ministry-roles/${roleId}`, {
       method: "PUT",
@@ -108,13 +116,14 @@ export default function MinistryRolesDialog({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        name: editingName,
+        name: trimmedEditingName,
       }),
     })
 
     if (res.ok) {
       setEditingRoleId("")
       setEditingName("")
+      setSuccess("Rol actualizado correctamente.")
       fetchRoles()
     } else {
       const data = await res.json()
@@ -130,12 +139,14 @@ export default function MinistryRolesDialog({
     }
 
     setError("")
+    setSuccess("")
 
     const res = await fetch(`/api/ministry-roles/${roleId}`, {
       method: "DELETE",
     })
 
     if (res.ok) {
+      setSuccess("Rol eliminado correctamente.")
       fetchRoles()
     } else {
       const data = await res.json()
@@ -184,6 +195,10 @@ export default function MinistryRolesDialog({
 
           {error ? (
             <p className="text-sm font-medium text-destructive">{error}</p>
+          ) : null}
+
+          {success ? (
+            <p className="text-sm font-medium text-green-700">{success}</p>
           ) : null}
 
           <div className="rounded-lg border">

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react"
 import { Pencil, Plus, Trash2, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { FieldError } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import {
@@ -36,6 +37,7 @@ export default function MinistryRolesManager({
   const [editingName, setEditingName] = useState("")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
 
   const rolesUrl = ministryId
     ? `/api/ministry-roles?ministryId=${ministryId}`
@@ -87,11 +89,14 @@ export default function MinistryRolesManager({
   }, [rolesUrl, onRolesChange])
 
   async function handleCreateRole() {
-    if (!name.trim()) {
+    const trimmedName = name.trim()
+
+    if (!trimmedName) {
       return
     }
 
     setError("")
+    setSuccess("")
 
     const res = await fetch("/api/ministry-roles", {
       method: "POST",
@@ -99,13 +104,14 @@ export default function MinistryRolesManager({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        name,
+        name: trimmedName,
         ministryId,
       }),
     })
 
     if (res.ok) {
       setName("")
+      setSuccess("Rol creado correctamente.")
       fetchRoles()
     } else {
       const data = await res.json()
@@ -114,11 +120,14 @@ export default function MinistryRolesManager({
   }
 
   async function handleUpdateRole(roleId: string) {
-    if (!editingName.trim()) {
+    const trimmedEditingName = editingName.trim()
+
+    if (!trimmedEditingName) {
       return
     }
 
     setError("")
+    setSuccess("")
 
     const res = await fetch(`/api/ministry-roles/${roleId}`, {
       method: "PUT",
@@ -126,13 +135,14 @@ export default function MinistryRolesManager({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        name: editingName,
+        name: trimmedEditingName,
       }),
     })
 
     if (res.ok) {
       setEditingRoleId("")
       setEditingName("")
+      setSuccess("Rol actualizado correctamente.")
       fetchRoles()
     } else {
       const data = await res.json()
@@ -148,12 +158,14 @@ export default function MinistryRolesManager({
     }
 
     setError("")
+    setSuccess("")
 
     const res = await fetch(`/api/ministry-roles/${roleId}`, {
       method: "DELETE",
     })
 
     if (res.ok) {
+      setSuccess("Rol eliminado correctamente.")
       fetchRoles()
     } else {
       const data = await res.json()
@@ -184,12 +196,14 @@ export default function MinistryRolesManager({
         </div>
       </div>
 
-      {error ? (
-        <p className="text-sm font-medium text-destructive">{error}</p>
+      <FieldError>{error}</FieldError>
+
+      {success ? (
+        <p className="text-sm font-medium text-green-700">{success}</p>
       ) : null}
 
       <div className="rounded-lg border bg-white">
-        <Table>
+        <Table containerClassName="max-h-72">
           <TableHeader>
             <TableRow>
               <TableHead>Rol</TableHead>

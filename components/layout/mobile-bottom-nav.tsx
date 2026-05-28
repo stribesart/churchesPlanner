@@ -31,7 +31,7 @@ export default function MobileBottomNav({ user }: Props) {
   return (
     <>
       {/* Bottom nav - only on mobile */}
-      <nav className="fixed bottom-4 left-4 right-4 z-50 flex items-center justify-between gap-2 rounded-full bg-white/90 p-2 shadow-lg md:hidden">
+      <nav className="hidden fixed bottom-4 left-4 right-4 z-50 items-center justify-between gap-2 rounded-full bg-white/90 p-2 shadow-lg md:hidden">
         {primary.map((item) => {
           const isActive = pathname === item.href
           const Icon = item.icon

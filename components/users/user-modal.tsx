@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -93,6 +94,7 @@ function UserModalForm({
   const [ministryRoleId, setMinistryRoleId] = useState(user?.ministryRoleId ?? "")
   const [rolesLoading, setRolesLoading] = useState(false)
   const [error, setError] = useState("")
+  const [saving, setSaving] = useState(false)
 
   async function fetchMinistryRoles() {
     if (!isCurrentUserLeader) {
@@ -116,6 +118,36 @@ function UserModalForm({
   }
 
   async function handleSubmit() {
+    setError("")
+
+    const trimmedName = name.trim()
+    const trimmedEmail = email.trim().toLowerCase()
+
+    if (!trimmedName) {
+      setError("El nombre es obligatorio.")
+      return
+    }
+
+    if (!trimmedEmail) {
+      setError("El correo electrónico es obligatorio.")
+      return
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setError("Ingresa un correo electrónico válido.")
+      return
+    }
+
+    if (!isEdit && !password.trim()) {
+      setError("La contraseña es obligatoria.")
+      return
+    }
+
+    if (password.trim() && !/(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{8,}/.test(password.trim())) {
+      setError("La contraseña debe tener mínimo 8 caracteres, incluir una mayúscula, letras y un número.")
+      return
+    }
+
     if (isCurrentUserLeader && !ministryRoleId) {
       setError("Primero selecciona un rol del ministerio.")
       return
@@ -127,26 +159,30 @@ function UserModalForm({
 
     const method = isEdit ? "PUT" : "POST"
 
+    setSaving(true)
+
     const res = await fetch(url, {
       method,
       headers: {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        name,
-        email,
-        password,
+        name: trimmedName,
+        email: trimmedEmail,
+        password: password.trim(),
         role: isCurrentUserLeader ? "miembro colaborador" : role,
         ministryRoleId: isCurrentUserLeader ? ministryRoleId : undefined,
       }),
     })
+    const data = await res.json()
+
+    setSaving(false)
 
     if (res.ok) {
       onSuccess()
       onOpenChange(false)
     } else {
-      const data = await res.json()
-      setError(data?.message || "Error")
+      setError(data?.message || "No se pudo guardar el usuario. Intenta de nuevo.")
     }
   }
 
@@ -160,6 +196,9 @@ function UserModalForm({
         <DialogTitle>
           {isEdit ? "Editar usuario" : "Crear usuario"}
         </DialogTitle>
+        <DialogDescription>
+          Captura los datos de acceso y el rol que tendrá este usuario.
+        </DialogDescription>
       </DialogHeader>
 
       <div className="space-y-4">
@@ -245,9 +284,9 @@ function UserModalForm({
         <Button
           onClick={handleSubmit}
           className="w-full"
-          disabled={isCurrentUserLeader && ministryRoles.length === 0}
+          disabled={saving || (isCurrentUserLeader && ministryRoles.length === 0)}
         >
-          {isEdit ? "Actualizar" : "Crear"}
+          {saving ? "Guardando..." : isEdit ? "Actualizar" : "Crear"}
         </Button>
       </div>
     </DialogContent>

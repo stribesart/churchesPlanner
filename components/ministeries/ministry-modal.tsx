@@ -9,12 +9,14 @@ import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { FieldError } from "@/components/ui/field"
 
 type Ministry = {
   _id?: string
@@ -71,6 +73,8 @@ function MinistryForm({
   const [name, setName] = useState(ministry?.name ?? "")
   const [description, setDescription] = useState(ministry?.description ?? "")
   const [leader, setLeader] = useState(ministry?.leader ?? "")
+  const [error, setError] = useState("")
+  const [saving, setSaving] = useState(false)
   const availableLeaders = useMemo(
     () =>
       leaders.filter(
@@ -81,8 +85,18 @@ function MinistryForm({
   )
 
   async function handleSubmit() {
+    setError("")
+
+    const trimmedName = name.trim()
+    const trimmedDescription = description.trim()
+
+    if (!trimmedName) {
+      setError("El nombre del ministerio es obligatorio.")
+      return
+    }
+
     if (!leader) {
-      alert("Selecciona un líder")
+      setError("Selecciona un líder.")
       return
     }
 
@@ -92,19 +106,28 @@ function MinistryForm({
 
     const method = isEdit ? "PUT" : "POST"
 
+    setSaving(true)
+
     const res = await fetch(url, {
       method,
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ name, description, leader }),
+      body: JSON.stringify({
+        name: trimmedName,
+        description: trimmedDescription,
+        leader,
+      }),
     })
+    const data = await res.json()
+
+    setSaving(false)
 
     if (res.ok) {
       onSuccess()
       onOpenChange(false)
     } else {
-      alert("Error")
+      setError(data?.message || "No se pudo guardar el ministerio. Intenta de nuevo.")
     }
   }
 
@@ -114,6 +137,9 @@ function MinistryForm({
         <DialogTitle>
           {isEdit ? "Editar ministerio" : "Crear ministerio"}
         </DialogTitle>
+        <DialogDescription>
+          Asigna un nombre, una descripción y el líder responsable.
+        </DialogDescription>
       </DialogHeader>
 
       <div className="space-y-4">
@@ -139,8 +165,10 @@ function MinistryForm({
           />
         </div>
 
-        <Button onClick={handleSubmit} className="w-full">
-          {isEdit ? "Actualizar" : "Crear"}
+        <FieldError>{error}</FieldError>
+
+        <Button onClick={handleSubmit} className="w-full" disabled={saving}>
+          {saving ? "Guardando..." : isEdit ? "Actualizar" : "Crear"}
         </Button>
       </div>
     </>

@@ -18,6 +18,12 @@ function isLeaderRole(role: unknown) {
   return normalizedRole === "lider" || normalizedRole === "líder"
 }
 
+const allowedRoles = ["pastor", "lider", "miembro colaborador", "miembro"]
+
+function isPasswordValid(password: string) {
+  return /(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{8,}/.test(password)
+}
+
 export async function PUT(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -34,8 +40,17 @@ export async function PUT(
       )
     }
 
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json(
+        { message: "Usuario no válido" },
+        { status: 400 }
+      )
+    }
+
     const { name, email, password, role, ministryId, ministryRoleId } = await req.json()
+    const trimmedName = typeof name === "string" ? name.trim() : ""
     const normalizedEmail = normalizeEmail(email || "")
+    const trimmedPassword = typeof password === "string" ? password.trim() : ""
     const db = await getTenantDbByName(tenantDbName)
     const userId = new ObjectId(id)
     const currentUserIsLeader = isLeaderRole(currentUser.user.role)
@@ -49,6 +64,37 @@ export async function PUT(
       return NextResponse.json(
         { message: "Usuario no encontrado" },
         { status: 404 }
+      )
+    }
+
+    if (!trimmedName) {
+      return NextResponse.json(
+        { message: "El nombre es obligatorio" },
+        { status: 400 }
+      )
+    }
+
+    if (!normalizedEmail) {
+      return NextResponse.json(
+        { message: "El correo electrónico es obligatorio" },
+        { status: 400 }
+      )
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      return NextResponse.json(
+        { message: "Ingresa un correo electrónico válido" },
+        { status: 400 }
+      )
+    }
+
+    if (trimmedPassword && !isPasswordValid(trimmedPassword)) {
+      return NextResponse.json(
+        {
+          message:
+            "La contraseña debe tener mínimo 8 caracteres, incluir una mayúscula, letras y un número",
+        },
+        { status: 400 }
       )
     }
 
@@ -84,6 +130,16 @@ export async function PUT(
 
     const normalizedRole =
       currentUserIsLeader ? "miembro colaborador" : role
+
+    if (
+      typeof normalizedRole !== "string" ||
+      !allowedRoles.includes(normalizedRole)
+    ) {
+      return NextResponse.json(
+        { message: "Selecciona un rol válido" },
+        { status: 400 }
+      )
+    }
 
     if (!currentUserIsLeader && !isLeaderRole(normalizedRole)) {
       const assignedMinistry = await db.collection("ministeries").findOne({
@@ -134,7 +190,7 @@ export async function PUT(
       ministryId?: string | null
       ministryRoleId?: string | null
     } = {
-      name,
+      name: trimmedName,
       email: normalizedEmail,
       role: normalizedRole,
     }
@@ -153,8 +209,8 @@ export async function PUT(
           : null
     }
 
-    if (password && password.trim() !== "") {
-      updateData.password = await bcrypt.hash(password, 10)
+    if (trimmedPassword) {
+      updateData.password = await bcrypt.hash(trimmedPassword, 10)
     }
 
     const result = await db.collection("users").updateOne(
@@ -204,6 +260,13 @@ export async function DELETE(
     }
 
     const db = await getTenantDbByName(tenantDbName)
+
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json(
+        { message: "Usuario no válido" },
+        { status: 400 }
+      )
+    }
 
     const userId = new ObjectId(id)
     const currentUserIsLeader = isLeaderRole(currentUser.user.role)

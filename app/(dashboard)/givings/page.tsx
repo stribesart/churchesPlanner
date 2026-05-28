@@ -159,9 +159,23 @@ export default function GivingsPage() {
   }
 
   async function handleSubmit() {
-    setSaving(true)
     setError("")
     setSuccess("")
+
+    const parsedAmount = Number(amount)
+    const trimmedNotes = notes.trim()
+
+    if (!amount.trim() || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      setError("El monto debe ser mayor a 0")
+      return
+    }
+
+    if (type === "event" && eventId === noneValue) {
+      setError("Selecciona un evento para esta ofrenda")
+      return
+    }
+
+    setSaving(true)
 
     const res = await fetch("/api/givings", {
       method: "POST",
@@ -169,12 +183,12 @@ export default function GivingsPage() {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        amount: Number(amount),
+        amount: parsedAmount,
         currency: "MXN",
         type,
         eventId: type === "event" && eventId !== noneValue ? eventId : null,
         paymentMethod,
-        notes,
+        notes: trimmedNotes,
       }),
     })
     const data = await res.json()
@@ -358,8 +372,7 @@ export default function GivingsPage() {
           <CardTitle>Historial reciente</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-          <Table className="min-w-[620px]">
+          <Table className="min-w-[620px]" containerClassName="max-h-[360px]">
             <TableHeader>
               <TableRow>
                 <TableHead>Monto</TableHead>
@@ -416,7 +429,6 @@ export default function GivingsPage() {
               )}
             </TableBody>
           </Table>
-          </div>
         </CardContent>
       </Card>
     </div>

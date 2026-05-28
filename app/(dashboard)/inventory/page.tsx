@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -250,7 +251,7 @@ export default function InventoryPage() {
       </div>
 
       <div className="mt-6 rounded-lg border bg-white">
-        <Table>
+        <Table containerClassName="max-h-[60vh]">
           <TableHeader>
             <TableRow>
               <TableHead>Nombre</TableHead>
@@ -441,8 +442,24 @@ function InventoryForm({
   const isEdit = Boolean(item)
 
   async function handleSubmit() {
-    setSaving(true)
     setError("")
+
+    const trimmedName = name.trim()
+    const trimmedLocation = location.trim()
+    const trimmedNotes = notes.trim()
+    const parsedQuantity = Number(quantity)
+
+    if (!trimmedName) {
+      setError("El nombre es obligatorio")
+      return
+    }
+
+    if (!quantity.trim() || !Number.isInteger(parsedQuantity) || parsedQuantity < 0) {
+      setError("La cantidad debe ser un número entero mayor o igual a 0")
+      return
+    }
+
+    setSaving(true)
 
     const resolvedMinistryId = leader
       ? currentMinistryId
@@ -456,14 +473,14 @@ function InventoryForm({
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        name,
-        quantity: Number(quantity),
+        name: trimmedName,
+        quantity: parsedQuantity,
         condition,
         status,
-        location,
+        location: trimmedLocation,
         ministryId: resolvedMinistryId,
         assignedTo: assignedTo === noneValue ? null : assignedTo,
-        notes,
+        notes: trimmedNotes,
       }),
     })
     const data = await res.json()
@@ -483,6 +500,9 @@ function InventoryForm({
     <DialogContent className="sm:max-w-2xl">
       <DialogHeader>
         <DialogTitle>{isEdit ? "Editar recurso" : "Nuevo recurso"}</DialogTitle>
+        <DialogDescription>
+          Registra los detalles del recurso y su asignación dentro de la iglesia.
+        </DialogDescription>
       </DialogHeader>
 
       <FieldGroup className="max-h-[70vh] overflow-y-auto pr-1">

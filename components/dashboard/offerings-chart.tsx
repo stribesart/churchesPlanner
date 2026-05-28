@@ -131,7 +131,7 @@ export function OfferingsChart({ offerings }: Props) {
   )
 
   return (
-    <Card className="@container/card">
+    <Card className="@container/card min-w-0">
       <CardHeader className="gap-3">
         <CardTitle>Ofrendas registradas</CardTitle>
         <CardDescription>
@@ -179,7 +179,7 @@ export function OfferingsChart({ offerings }: Props) {
       <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
         <ChartContainer
           config={chartConfig}
-          className="aspect-auto h-[250px] w-full"
+          className="aspect-auto h-[250px] min-w-0 w-full"
         >
           <AreaChart data={chartData}>
             <defs>

@@ -17,6 +17,12 @@ function isLeaderRole(role: unknown) {
   return normalizedRole === "lider" || normalizedRole === "líder"
 }
 
+const allowedRoles = ["pastor", "lider", "miembro colaborador", "miembro"]
+
+function isPasswordValid(password: string) {
+  return /(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{8,}/.test(password)
+}
+
 export async function GET(req: Request) {
   const currentUser = await getCurrentTenantUser(req)
   const tenantDbName = currentUser?.tenantDbName
@@ -58,12 +64,53 @@ export async function POST(req: Request) {
   }
 
   const { name, email, password, role, ministryId, ministryRoleId } = await req.json()
+  const trimmedName = typeof name === "string" ? name.trim() : ""
+  const normalizedEmail = normalizeEmail(email || "")
+  const trimmedPassword = typeof password === "string" ? password.trim() : ""
   const currentUserIsLeader = isLeaderRole(currentUser.user.role)
   const currentMinistryId =
     typeof currentUser.user.ministryId === "string"
       ? currentUser.user.ministryId
       : null
   const db = await getTenantDbByName(tenantDbName)
+
+  if (!trimmedName) {
+    return NextResponse.json(
+      { message: "El nombre es obligatorio" },
+      { status: 400 }
+    )
+  }
+
+  if (!normalizedEmail) {
+    return NextResponse.json(
+      { message: "El correo electrónico es obligatorio" },
+      { status: 400 }
+    )
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    return NextResponse.json(
+      { message: "Ingresa un correo electrónico válido" },
+      { status: 400 }
+    )
+  }
+
+  if (!trimmedPassword) {
+    return NextResponse.json(
+      { message: "La contraseña es obligatoria" },
+      { status: 400 }
+    )
+  }
+
+  if (!isPasswordValid(trimmedPassword)) {
+    return NextResponse.json(
+      {
+        message:
+          "La contraseña debe tener mínimo 8 caracteres, incluir una mayúscula, letras y un número",
+      },
+      { status: 400 }
+    )
+  }
 
   if (currentUserIsLeader && !currentMinistryId) {
     return NextResponse.json(
@@ -99,14 +146,23 @@ export async function POST(req: Request) {
 
   const normalizedRole =
     currentUserIsLeader ? "miembro colaborador" : role
+
+  if (
+    typeof normalizedRole !== "string" ||
+    !allowedRoles.includes(normalizedRole)
+  ) {
+    return NextResponse.json(
+      { message: "Selecciona un rol válido" },
+      { status: 400 }
+    )
+  }
+
   const assignedMinistryId =
     currentUserIsLeader
       ? currentMinistryId
       : typeof ministryId === "string" && ministryId.trim()
         ? ministryId
         : null
-
-  const normalizedEmail = normalizeEmail(email || "")
 
   const existingEmailOwner = await getGlobalEmailOwner(normalizedEmail)
 
@@ -117,10 +173,10 @@ export async function POST(req: Request) {
     )
   }
 
-  const hashedPassword = await bcrypt.hash(password, 10)
+  const hashedPassword = await bcrypt.hash(trimmedPassword, 10)
 
   const newUser = {
-    name,
+    name: trimmedName,
     email: normalizedEmail,
     password: hashedPassword,
     role: normalizedRole,

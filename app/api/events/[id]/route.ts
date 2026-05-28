@@ -2,6 +2,40 @@ import { NextResponse } from "next/server"
 import { getTenantFromRequest, getTenantDbByName } from "@/lib/tenant"
 import { ObjectId } from "mongodb"
 
+function parseEventInput(body: Record<string, unknown>) {
+  const name = typeof body.name === "string" ? body.name.trim() : ""
+  const description =
+    typeof body.description === "string" ? body.description.trim() : ""
+  const date = typeof body.date === "string" ? body.date.trim() : ""
+  const startTime =
+    typeof body.startTime === "string" ? body.startTime.trim() : ""
+  const endTime = typeof body.endTime === "string" ? body.endTime.trim() : ""
+  const location =
+    typeof body.location === "string" ? body.location.trim() : ""
+  const organizer =
+    typeof body.organizer === "string" ? body.organizer.trim() : ""
+
+  if (!name) return { ok: false as const, message: "El nombre del evento es obligatorio" }
+  if (!date) return { ok: false as const, message: "Selecciona la fecha del evento" }
+  if (!startTime) return { ok: false as const, message: "Selecciona la hora de inicio" }
+  if (!endTime) return { ok: false as const, message: "Selecciona la hora de fin" }
+  if (startTime >= endTime) {
+    return {
+      ok: false as const,
+      message: "La hora de fin debe ser posterior a la hora de inicio",
+    }
+  }
+  if (!location) return { ok: false as const, message: "La ubicación es obligatoria" }
+  if (!organizer || !ObjectId.isValid(organizer)) {
+    return { ok: false as const, message: "Selecciona un organizador válido" }
+  }
+
+  return {
+    ok: true as const,
+    event: { name, description, date, startTime, endTime, location, organizer },
+  }
+}
+
 export async function PUT(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -17,30 +51,35 @@ export async function PUT(
       )
     }
 
-    const { name, description, date, startTime, endTime, location, organizer } = await req.json()
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json(
+        { message: "Evento no válido" },
+        { status: 400 }
+      )
+    }
+
+    const body = await req.json()
+    const parsed = parseEventInput(body)
+
+    if (!parsed.ok) {
+      return NextResponse.json({ message: parsed.message }, { status: 400 })
+    }
+
     const db = await getTenantDbByName(tenantDbName)
+    const organizerUser = await db.collection("users").findOne({
+      _id: new ObjectId(parsed.event.organizer),
+    })
 
-    const updateData: { 
-      name?: string
-      description?: string
-      date?: string
-      startTime?: string
-      endTime?: string
-      location?: string
-      organizer?: string
-    } = {}
-
-    if (name !== undefined) updateData.name = name
-    if (description !== undefined) updateData.description = description
-    if (date !== undefined) updateData.date = date
-    if (startTime !== undefined) updateData.startTime = startTime
-    if (endTime !== undefined) updateData.endTime = endTime
-    if (location !== undefined) updateData.location = location
-    if (organizer !== undefined) updateData.organizer = organizer
+    if (!organizerUser) {
+      return NextResponse.json(
+        { message: "Organizador no encontrado" },
+        { status: 404 }
+      )
+    }
 
     const result = await db.collection("events").updateOne(
       { _id: new ObjectId(id) },
-      { $set: updateData }
+      { $set: parsed.event }
     )
 
     if (result.matchedCount === 0) {
@@ -77,6 +116,13 @@ export async function DELETE(
     }
 
     const db = await getTenantDbByName(tenantDbName)
+
+    if (!ObjectId.isValid(id)) {
+      return NextResponse.json(
+        { message: "Evento no válido" },
+        { status: 400 }
+      )
+    }
 
     const result = await db.collection("events").deleteOne({
       _id: new ObjectId(id),

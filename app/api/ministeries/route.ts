@@ -39,6 +39,20 @@ function getLeaderDisplayName(leader: unknown) {
   return email
 }
 
+function parseMinistryInput(body: Record<string, unknown>) {
+  const name = typeof body.name === "string" ? body.name.trim() : ""
+  const description =
+    typeof body.description === "string" ? body.description.trim() : ""
+  const leader = typeof body.leader === "string" ? body.leader.trim() : ""
+
+  if (!name) return { ok: false as const, message: "El nombre del ministerio es obligatorio" }
+  if (!leader || !ObjectId.isValid(leader)) {
+    return { ok: false as const, message: "Selecciona un líder válido" }
+  }
+
+  return { ok: true as const, ministry: { name, description, leader } }
+}
+
 export async function GET(req: Request) {
   const currentUser = await getCurrentTenantUser(req)
   const tenantDbName = currentUser?.tenantDbName
@@ -121,19 +135,17 @@ export async function POST(req: Request) {
     )
   }
 
-  const { name, description, leader } = await req.json()
+  const body = await req.json()
+  const parsed = parseMinistryInput(body)
+
+  if (!parsed.ok) {
+    return NextResponse.json({ message: parsed.message }, { status: 400 })
+  }
 
   const db = await getTenantDbByName(tenantDbName)
 
-  if (typeof leader !== "string" || !ObjectId.isValid(leader)) {
-    return NextResponse.json(
-      { message: "Selecciona un líder válido" },
-      { status: 400 }
-    )
-  }
-
   const selectedLeader = await db.collection("users").findOne({
-    _id: new ObjectId(leader),
+    _id: new ObjectId(parsed.ministry.leader),
   })
 
   if (!selectedLeader || !isLeaderRole(selectedLeader.role)) {
@@ -151,7 +163,9 @@ export async function POST(req: Request) {
   }
 
   // verificar si ya existe
-  const existingMinistry = await db.collection("ministeries").findOne({ name })
+  const existingMinistry = await db.collection("ministeries").findOne({
+    name: parsed.ministry.name,
+  })
 
   if (existingMinistry) {
     return NextResponse.json(
@@ -166,20 +180,16 @@ export async function POST(req: Request) {
   const newMinistry = {
     _id: ministryObjectId,
     ministryId,
-    name,
-    description,
-    leader,
+    ...parsed.ministry,
     createdAt: new Date(),
   }
 
   await db.collection("ministeries").insertOne(newMinistry)
 
-  if (typeof leader === "string" && ObjectId.isValid(leader)) {
-    await db.collection("users").updateOne(
-      { _id: new ObjectId(leader) },
-      { $set: { ministryId } }
-    )
-  }
+  await db.collection("users").updateOne(
+    { _id: new ObjectId(parsed.ministry.leader) },
+    { $set: { ministryId } }
+  )
 
   return NextResponse.json({ message: "Ministerio creado" })
 }

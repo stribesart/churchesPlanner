@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -263,8 +264,8 @@ export default function OfferingsPage() {
         <span className="font-semibold">{formatMoney(totalAmount)}</span>
       </div>
 
-      <div className="mt-6 overflow-x-auto rounded-lg border bg-white">
-        <Table className="min-w-[900px]">
+      <div className="mt-6 rounded-lg border bg-white">
+        <Table className="min-w-[900px]" containerClassName="max-h-[60vh]">
           <TableHeader>
             <TableRow>
               <TableHead>Monto</TableHead>
@@ -448,8 +449,34 @@ function OfferingForm({
   const isEdit = Boolean(offering)
 
   async function handleSubmit() {
-    setSaving(true)
     setError("")
+
+    const parsedAmount = Number(amount)
+    const trimmedCurrency = currency.trim().toUpperCase()
+    const trimmedDonorName = donorName.trim()
+    const trimmedNotes = notes.trim()
+
+    if (!amount.trim() || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      setError("El monto debe ser mayor a 0")
+      return
+    }
+
+    if (!trimmedCurrency) {
+      setError("La moneda es obligatoria")
+      return
+    }
+
+    if (type === "event" && eventId === noneValue) {
+      setError("Selecciona un evento para esta ofrenda")
+      return
+    }
+
+    if (source === "registered_user" && userId === noneValue) {
+      setError("Selecciona el usuario que realizó la ofrenda")
+      return
+    }
+
+    setSaving(true)
 
     const res = await fetch(
       isEdit ? `/api/offerings/${offering?._id}` : "/api/offerings",
@@ -459,18 +486,18 @@ function OfferingForm({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          amount: Number(amount),
-          currency,
+          amount: parsedAmount,
+          currency: trimmedCurrency,
           type,
           source,
           eventId: eventId === noneValue ? null : eventId,
           userId: userId === noneValue ? null : userId,
-          donorName,
+          donorName: trimmedDonorName,
           paymentMethod,
           paymentProvider: "manual",
           paymentStatus: "paid",
           entrySource: "admin",
-          notes,
+          notes: trimmedNotes,
         }),
       }
     )
@@ -491,6 +518,9 @@ function OfferingForm({
     <DialogContent className="max-h-[90vh] overflow-hidden sm:max-w-2xl">
       <DialogHeader>
         <DialogTitle>{isEdit ? "Editar ofrenda" : "Nueva ofrenda"}</DialogTitle>
+        <DialogDescription>
+          Registra una entrada financiera de forma administrativa.
+        </DialogDescription>
       </DialogHeader>
 
       <FieldGroup className="max-h-[70vh] overflow-y-auto pr-1">

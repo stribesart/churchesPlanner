@@ -18,6 +18,18 @@ function getUserDisplayName(user: unknown) {
   return ""
 }
 
+function parseAnnouncementInput(body: Record<string, unknown>) {
+  const title = typeof body.title === "string" ? body.title.trim() : ""
+  const content = typeof body.content === "string" ? body.content.trim() : ""
+  const author = typeof body.author === "string" ? body.author.trim() : ""
+
+  if (!title) return { ok: false as const, message: "El título es obligatorio" }
+  if (!content) return { ok: false as const, message: "El contenido es obligatorio" }
+  if (!author) return { ok: false as const, message: "El autor es obligatorio" }
+
+  return { ok: true as const, announcement: { title, content, author } }
+}
+
 export async function GET(req: Request) {
   const tenantDbName = await getTenantFromRequest(req)
 
@@ -82,13 +94,17 @@ export async function POST(req: Request) {
     )
   }
 
-  const { title, content, author } = await req.json()
+  const body = await req.json()
+  const parsed = parseAnnouncementInput(body)
+
+  if (!parsed.ok) {
+    return NextResponse.json({ message: parsed.message }, { status: 400 })
+  }
+
   const db = await getTenantDbByName(tenantDbName)
 
   const newAnnouncement = {
-    title,
-    content,
-    author,
+    ...parsed.announcement,
     createdAt: new Date(),
   }
 
