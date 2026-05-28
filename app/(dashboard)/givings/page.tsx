@@ -34,6 +34,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableSkeletonRows,
 } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 import { TypographyH1 } from "@/components/ui/typography"
@@ -384,14 +385,7 @@ export default function GivingsPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={5}
-                    className="text-center text-muted-foreground"
-                  >
-                    Cargando historial...
-                  </TableCell>
-                </TableRow>
+                <TableSkeletonRows columns={5} rows={5} />
               ) : givings.length === 0 ? (
                 <TableRow>
                   <TableCell

@@ -13,6 +13,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableSkeletonRows,
 } from "@/components/ui/table"
 import {
   AlertDialog,
@@ -58,6 +59,7 @@ export default function EventsPage() {
   const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
   const [filterName, setFilterName] = useState("")
   const [filterDate, setFilterDate] = useState("")
+  const [loading, setLoading] = useState(true)
 
   async function fetchEvents() {
     const [eventsRes, ministeriesRes] = await Promise.all([
@@ -84,6 +86,7 @@ export default function EventsPage() {
         if (isMounted) {
           setEvents(eventsData)
           setOrganizers(ministeriesData.leaders || [])
+          setLoading(false)
         }
       })
 
@@ -178,7 +181,9 @@ export default function EventsPage() {
           </TableHeader>
 
           <TableBody>
-            {filteredEvents.length === 0 ? (
+            {loading ? (
+              <TableSkeletonRows columns={6} rows={6} />
+            ) : filteredEvents.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center text-gray-500">
                   No hay eventos que coincidan con los filtros

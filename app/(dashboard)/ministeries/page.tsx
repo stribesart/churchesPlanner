@@ -12,6 +12,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableSkeletonRows,
 } from "@/components/ui/table"
 import {
   AlertDialog,
@@ -54,6 +55,7 @@ export default function MinisteriesPage() {
   const [leaders, setLeaders] = useState<Leader[]>([])
   const [open, setOpen] = useState(false)
   const [selectedMinistry, setSelectedMinistry] = useState<Ministry | null>(null)
+  const [loading, setLoading] = useState(true)
 
   async function fetchMinisteries() {
     const [ministeriesRes, usersRes] = await Promise.all([
@@ -83,6 +85,7 @@ export default function MinisteriesPage() {
           setLeaders(
             (Array.isArray(usersData) ? usersData : []).filter(isLeaderUser)
           )
+          setLoading(false)
         }
       })
 
@@ -135,7 +138,9 @@ export default function MinisteriesPage() {
           </TableHeader>
 
           <TableBody>
-            {ministeries.map((ministry) => (
+            {loading ? (
+              <TableSkeletonRows columns={4} rows={5} />
+            ) : ministeries.map((ministry) => (
               <TableRow key={ministry._id}>
                 <TableCell>{ministry.name}</TableCell>
                 <TableCell>{ministry.description}</TableCell>

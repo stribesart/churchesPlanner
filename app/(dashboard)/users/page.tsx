@@ -14,6 +14,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableSkeletonRows,
 } from "@/components/ui/table"
 import {
   AlertDialog,
@@ -68,6 +69,7 @@ export default function UsersPage() {
   const [inviteUrl, setInviteUrl] = useState("")
   const [inviteError, setInviteError] = useState("")
   const [inviteLoading, setInviteLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
   const isLeader = isLeaderRole(currentUserRole)
 
   const refreshUsersPage = useCallback(async () => {
@@ -126,6 +128,11 @@ export default function UsersPage() {
         setUsers(usersData)
         setMinistryRoles(rolesData?.roles || [])
       })
+      .finally(() => {
+        if (!ignore) {
+          setLoading(false)
+        }
+      })
 
     return () => {
       ignore = true
@@ -177,7 +184,7 @@ export default function UsersPage() {
   return (
     <div>
       <TypographyH1 className="mb-6 text-left">
-        Usuarios
+        Miembros
       </TypographyH1>
 
       {isLeader ? (
@@ -225,7 +232,9 @@ export default function UsersPage() {
           </TableHeader>
 
           <TableBody>
-            {users.map((user) => (
+            {loading ? (
+              <TableSkeletonRows columns={isLeader ? 5 : 4} rows={6} />
+            ) : users.map((user) => (
               <TableRow key={user._id}>
                 <TableCell>{user.name}</TableCell>
                 <TableCell>{user.email}</TableCell>

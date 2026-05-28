@@ -45,6 +45,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableSkeletonRows,
 } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 import { TypographyH1 } from "@/components/ui/typography"
@@ -288,11 +289,7 @@ export default function OfferingsPage() {
                 </TableCell>
               </TableRow>
             ) : loading ? (
-              <TableRow>
-                <TableCell colSpan={10} className="text-center text-muted-foreground">
-                  Cargando ofrendas...
-                </TableCell>
-              </TableRow>
+              <TableSkeletonRows columns={10} rows={6} />
             ) : offerings.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={10} className="text-center text-muted-foreground">

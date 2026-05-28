@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Label } from "@/components/ui/label"
 import {
   Select,
@@ -243,9 +244,10 @@ function UserModalForm({
           <div className="space-y-2">
             <Label>Rol dentro del ministerio</Label>
             {rolesLoading ? (
-              <p className="text-sm text-muted-foreground">
-                Cargando roles...
-              </p>
+              <div className="space-y-2">
+                <Skeleton className="h-9 w-full" />
+                <Skeleton className="h-4 w-48" />
+              </div>
             ) : ministryRoles.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 Primero crea roles en el módulo de ministerios para poder dar de

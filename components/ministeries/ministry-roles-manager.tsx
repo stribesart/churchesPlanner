@@ -14,6 +14,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableSkeletonRows,
 } from "@/components/ui/table"
 
 type MinistryRole = {
@@ -212,11 +213,7 @@ export default function MinistryRolesManager({
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow>
-                <TableCell colSpan={2} className="text-muted-foreground">
-                  Cargando roles...
-                </TableCell>
-              </TableRow>
+              <TableSkeletonRows columns={2} rows={3} />
             ) : roles.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={2} className="text-muted-foreground">

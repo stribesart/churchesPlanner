@@ -3,6 +3,7 @@
 import Sidebar from "@/components/layout/sidebar"
 import Topbar from "@/components/layout/topbar"
 import MobileBottomNav from "@/components/layout/mobile-bottom-nav"
+import { Skeleton } from "@/components/ui/skeleton"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 import { usePathname } from "next/navigation"
 
@@ -61,7 +62,18 @@ export default function DashboardLayout({ children }: Props) {
     }
   }, [pathname, user])
 
-  if (loading) return <div>Cargando...</div>
+  if (loading) {
+    return (
+      <div className="space-y-6 p-6">
+        <Skeleton className="h-8 w-56" />
+        <Skeleton className="h-4 w-72" />
+        <div className="grid gap-4 md:grid-cols-2">
+          <Skeleton className="h-32 w-full" />
+          <Skeleton className="h-32 w-full" />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <SidebarProvider>

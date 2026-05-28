@@ -19,6 +19,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Skeleton } from "@/components/ui/skeleton"
 import { OfferingsChart } from "@/components/dashboard/offerings-chart"
 import { UsersCreatedChart } from "@/components/dashboard/users-created-chart"
 
@@ -234,15 +235,15 @@ export default function DashboardPage() {
     return (
       <div className="space-y-6">
         <div className="space-y-3">
-          <div className="h-8 w-56 animate-pulse rounded-lg bg-muted" />
-          <div className="h-4 w-72 animate-pulse rounded-lg bg-muted" />
+          <Skeleton className="h-8 w-56" />
+          <Skeleton className="h-4 w-72" />
         </div>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
           {Array.from({ length: 4 }).map((_, index) => (
             <Card key={index}>
               <CardHeader>
-                <div className="h-4 w-28 animate-pulse rounded bg-muted" />
-                <div className="h-8 w-16 animate-pulse rounded bg-muted" />
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-8 w-16" />
               </CardHeader>
             </Card>
           ))}

@@ -45,6 +45,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableSkeletonRows,
 } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 import { TypographyH1 } from "@/components/ui/typography"
@@ -273,11 +274,7 @@ export default function InventoryPage() {
                 </TableCell>
               </TableRow>
             ) : loading ? (
-              <TableRow>
-                <TableCell colSpan={9} className="text-center text-muted-foreground">
-                  Cargando inventario...
-                </TableCell>
-              </TableRow>
+              <TableSkeletonRows columns={9} rows={6} />
             ) : items.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={9} className="text-center text-muted-foreground">

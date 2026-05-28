@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Skeleton } from "@/components/ui/skeleton"
 
 type Ministry = {
   _id: string
@@ -203,9 +204,11 @@ export default function MinistryRolesDialog({
 
           <div className="rounded-lg border">
             {loading ? (
-              <p className="p-4 text-sm text-muted-foreground">
-                Cargando roles...
-              </p>
+              <div className="space-y-3 p-4">
+                {Array.from({ length: 3 }).map((_, index) => (
+                  <Skeleton key={index} className="h-8 w-full" />
+                ))}
+              </div>
             ) : roles.length === 0 ? (
               <p className="p-4 text-sm text-muted-foreground">
                 Este ministerio todavía no tiene roles.

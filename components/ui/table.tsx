@@ -2,6 +2,7 @@
 
 import * as React from "react"
 
+import { Skeleton } from "@/components/ui/skeleton"
 import { cn } from "@/lib/utils"
 
 function Table({
@@ -110,6 +111,36 @@ function TableCaption({
   )
 }
 
+function TableSkeletonRows({
+  rows = 5,
+  columns,
+  cellClassName,
+}: {
+  rows?: number
+  columns: number
+  cellClassName?: string
+}) {
+  return (
+    <>
+      {Array.from({ length: rows }).map((_, rowIndex) => (
+        <TableRow key={rowIndex}>
+          {Array.from({ length: columns }).map((__, columnIndex) => (
+            <TableCell key={columnIndex} className={cellClassName}>
+              <Skeleton
+                className={cn(
+                  "h-4",
+                  columnIndex === 0 ? "w-32" : "w-24",
+                  columnIndex === columns - 1 ? "w-20" : ""
+                )}
+              />
+            </TableCell>
+          ))}
+        </TableRow>
+      ))}
+    </>
+  )
+}
+
 export {
   Table,
   TableHeader,
@@ -119,4 +150,5 @@ export {
   TableRow,
   TableCell,
   TableCaption,
+  TableSkeletonRows,
 }

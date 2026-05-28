@@ -13,6 +13,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TableSkeletonRows,
 } from "@/components/ui/table"
 import {
   AlertDialog,
@@ -47,6 +48,7 @@ export default function AnnouncementsPage() {
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null)
   const [filterTitle, setFilterTitle] = useState("")
   const [filterDate, setFilterDate] = useState("")
+  const [loading, setLoading] = useState(true)
 
   async function fetchAnnouncements() {
     const res = await fetch("/api/announcements")
@@ -62,6 +64,7 @@ export default function AnnouncementsPage() {
       .then((data) => {
         if (isMounted) {
           setAnnouncements(data)
+          setLoading(false)
         }
       })
 
@@ -168,7 +171,9 @@ export default function AnnouncementsPage() {
           </TableHeader>
 
           <TableBody>
-            {filteredAnnouncements.length === 0 ? (
+            {loading ? (
+              <TableSkeletonRows columns={4} rows={6} />
+            ) : filteredAnnouncements.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={4} className="text-center text-gray-500">
                   No hay anuncios que coincidan con los filtros

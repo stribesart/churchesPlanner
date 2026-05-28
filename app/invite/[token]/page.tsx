@@ -15,6 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Field,
   FieldDescription,
@@ -138,8 +139,11 @@ export default function InvitePage() {
 
           <CardContent>
             {loading ? (
-              <div className="rounded-xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-600">
-                Validando enlace...
+              <div className="space-y-4">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-4 w-48" />
               </div>
             ) : success ? (
               <div className="space-y-4">
