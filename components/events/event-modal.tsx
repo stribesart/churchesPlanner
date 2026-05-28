@@ -6,14 +6,19 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  Field,
+  FieldError,
+  FieldGroup,
+  FieldLabel,
+} from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { Textarea } from "@/components/ui/textarea"
-import { FieldError } from "@/components/ui/field"
 import {
   Select,
   SelectContent,
@@ -39,6 +44,15 @@ type Event = {
   location: string
   organizer: string
 }
+
+type EventField =
+  | "name"
+  | "date"
+  | "startTime"
+  | "endTime"
+  | "location"
+  | "organizer"
+type EventFieldErrors = Partial<Record<EventField, string>>
 
 type Props = {
   open: boolean
@@ -75,46 +89,58 @@ export default function EventModal({
   const [location, setLocation] = useState(event?.location ?? "")
   const [organizer, setOrganizer] = useState<string>(event?.organizer ?? "")
   const [error, setError] = useState("")
+  const [fieldErrors, setFieldErrors] = useState<EventFieldErrors>({})
 
   async function handleSubmit() {
     setError("")
+    setFieldErrors({})
 
     const trimmedName = name.trim()
     const trimmedDescription = description.trim()
+    const trimmedDate = date.trim()
+    const trimmedStartTime = startTime.trim()
+    const trimmedEndTime = endTime.trim()
     const trimmedLocation = location.trim()
+    const trimmedOrganizer = organizer.trim()
+    const nextFieldErrors: EventFieldErrors = {}
 
     if (!trimmedName) {
-      setError("El nombre del evento es obligatorio.")
-      return
+      nextFieldErrors.name = "El nombre del evento es obligatorio."
     }
 
-    if (!date) {
-      setError("Selecciona la fecha del evento.")
-      return
+    if (!trimmedDate) {
+      nextFieldErrors.date = "Selecciona la fecha del evento."
     }
 
-    if (!startTime) {
-      setError("Selecciona la hora de inicio.")
-      return
+    if (!trimmedStartTime) {
+      nextFieldErrors.startTime = "Selecciona la hora de inicio."
     }
 
-    if (!endTime) {
-      setError("Selecciona la hora de fin.")
-      return
+    if (!trimmedEndTime) {
+      nextFieldErrors.endTime = "Selecciona la hora de fin."
     }
 
-    if (startTime >= endTime) {
-      setError("La hora de fin debe ser posterior a la hora de inicio.")
-      return
+    if (
+      trimmedStartTime &&
+      trimmedEndTime &&
+      trimmedStartTime >= trimmedEndTime
+    ) {
+      nextFieldErrors.endTime =
+        "La hora de fin debe ser posterior a la hora de inicio."
     }
 
     if (!trimmedLocation) {
-      setError("La ubicación es obligatoria.")
-      return
+      nextFieldErrors.location = "La ubicación es obligatoria."
     }
 
-    if (!organizer) {
-      setError("Selecciona un organizador.")
+    if (!trimmedOrganizer) {
+      nextFieldErrors.organizer = "Selecciona un organizador."
+    } else if (!organizers.some((user) => user._id === trimmedOrganizer)) {
+      nextFieldErrors.organizer = "Selecciona un organizador válido."
+    }
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors)
       return
     }
 
@@ -135,11 +161,11 @@ export default function EventModal({
         body: JSON.stringify({
           name: trimmedName,
           description: trimmedDescription,
-          date,
-          startTime,
-          endTime,
+          date: trimmedDate,
+          startTime: trimmedStartTime,
+          endTime: trimmedEndTime,
           location: trimmedLocation,
-          organizer,
+          organizer: trimmedOrganizer,
         }),
       })
       const data = await res.json()
@@ -157,10 +183,22 @@ export default function EventModal({
     }
   }
 
+  function clearFieldError(field: EventField) {
+    setFieldErrors((currentErrors) => {
+      if (!currentErrors[field]) return currentErrors
+
+      const nextErrors = { ...currentErrors }
+      delete nextErrors[field]
+
+      return nextErrors
+    })
+    setError("")
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="max-w-2xl"
+        className="overflow-hidden sm:max-w-2xl"
         onEscapeKeyDown={(event) => event.preventDefault()}
         onInteractOutside={(event) => event.preventDefault()}
       >
@@ -174,65 +212,133 @@ export default function EventModal({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 max-h-96 overflow-y-auto" aria-busy={submitting}>
+        <FieldGroup
+          className="max-h-[calc(100dvh-14rem)] overflow-y-auto pr-1"
+          aria-busy={submitting}
+        >
+          <Field>
+            <FieldLabel>Nombre del evento</FieldLabel>
+            <Input
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value)
+                clearFieldError("name")
+              }}
+              aria-invalid={Boolean(fieldErrors.name)}
+              disabled={submitting}
+            />
+            <FieldError>{fieldErrors.name}</FieldError>
+          </Field>
 
-          <div>
-            <Label>Nombre del evento</Label>
-            <Input value={name} onChange={(e) => setName(e.target.value)} />
+          <Field>
+            <FieldLabel>Descripción</FieldLabel>
+            <Textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              disabled={submitting}
+            />
+          </Field>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field>
+              <FieldLabel>Fecha</FieldLabel>
+              <Input
+                type="date"
+                value={date}
+                onChange={(e) => {
+                  setDate(e.target.value)
+                  clearFieldError("date")
+                }}
+                aria-invalid={Boolean(fieldErrors.date)}
+                disabled={submitting}
+              />
+              <FieldError>{fieldErrors.date}</FieldError>
+            </Field>
+
+            <Field>
+              <FieldLabel>Ubicación</FieldLabel>
+              <Input
+                value={location}
+                onChange={(e) => {
+                  setLocation(e.target.value)
+                  clearFieldError("location")
+                }}
+                aria-invalid={Boolean(fieldErrors.location)}
+                disabled={submitting}
+              />
+              <FieldError>{fieldErrors.location}</FieldError>
+            </Field>
           </div>
 
-          <div>
-            <Label>Descripción</Label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field>
+              <FieldLabel>Hora inicio</FieldLabel>
+              <Input
+                type="time"
+                value={startTime}
+                onChange={(e) => {
+                  setStartTime(e.target.value)
+                  clearFieldError("startTime")
+                  clearFieldError("endTime")
+                }}
+                aria-invalid={Boolean(fieldErrors.startTime)}
+                disabled={submitting}
+              />
+              <FieldError>{fieldErrors.startTime}</FieldError>
+            </Field>
+
+            <Field>
+              <FieldLabel>Hora fin</FieldLabel>
+              <Input
+                type="time"
+                value={endTime}
+                onChange={(e) => {
+                  setEndTime(e.target.value)
+                  clearFieldError("endTime")
+                }}
+                aria-invalid={Boolean(fieldErrors.endTime)}
+                disabled={submitting}
+              />
+              <FieldError>{fieldErrors.endTime}</FieldError>
+            </Field>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Fecha</Label>
-              <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-            </div>
-
-            <div>
-              <Label>Ubicación</Label>
-              <Input value={location} onChange={(e) => setLocation(e.target.value)} />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label>Hora inicio</Label>
-              <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
-            </div>
-
-            <div>
-              <Label>Hora fin</Label>
-              <Input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
-            </div>
-          </div>
-
-          <div>
-            <Label>Organizador</Label>
-            <Select value={organizer} onValueChange={setOrganizer}>
-              <SelectTrigger className="w-full">
+          <Field>
+            <FieldLabel>Organizador</FieldLabel>
+            <Select
+              value={organizer}
+              onValueChange={(value) => {
+                setOrganizer(value)
+                clearFieldError("organizer")
+              }}
+              disabled={submitting}
+            >
+              <SelectTrigger
+                className="w-full"
+                aria-invalid={Boolean(fieldErrors.organizer)}
+              >
                 <SelectValue placeholder="Selecciona un organizador" />
               </SelectTrigger>
               <SelectContent>
                 {organizers.map((user) => (
                   <SelectItem key={user._id} value={user._id}>
-                    {user.name}
+                    {user.name || user.email}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </div>
+            <FieldError>{fieldErrors.organizer}</FieldError>
+          </Field>
 
           <FieldError>{error}</FieldError>
+        </FieldGroup>
 
+        <DialogFooter>
           <Button onClick={handleSubmit} className="w-full" disabled={submitting}>
             {submitting ? (
               <>
                 <LoadingSpinner />
-                Guardando...
+                {isEdit ? "Actualizando..." : "Creando..."}
               </>
             ) : isEdit ? (
               "Actualizar"
@@ -240,8 +346,7 @@ export default function EventModal({
               "Crear"
             )}
           </Button>
-
-        </div>
+        </DialogFooter>
 
       </DialogContent>
     </Dialog>

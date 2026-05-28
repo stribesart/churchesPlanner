@@ -32,7 +32,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { Pencil, Trash2 } from "lucide-react"
+import { Filter, Pencil, Trash2 } from "lucide-react"
 
 type Event = {
   _id: string
@@ -98,16 +98,15 @@ export default function EventsPage() {
   }, [])
 
   const filteredEvents = events.filter((event) => {
-    const matchesName = event.name
-      .toLowerCase()
-      .includes(filterName.toLowerCase())
+    const matchesName =
+      !filterName.trim() ||
+      event.name.toLowerCase().includes(filterName.trim().toLowerCase())
 
-    if (!filterDate) {
-      return matchesName
-    }
+    const matchesDate = !filterDate || event.date === filterDate
 
-    return matchesName && event.date === filterDate
+    return matchesName && matchesDate
   })
+  const hasFiltersToClear = Boolean(filterName) || Boolean(filterDate)
 
   async function handleDelete(id: string) {
     setSubmitting(true)
@@ -146,9 +145,13 @@ export default function EventsPage() {
         + Nuevo evento
       </Button>
 
-      <div className="bg-white rounded-lg border p-4 mt-4 mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
+      <div className="mt-4 mb-4 rounded-lg border bg-white p-4">
+        <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
+          <Filter className="h-4 w-4" />
+          Filtros
+        </div>
+        <div className="flex flex-col gap-4 md:flex-row md:items-end">
+          <div className="w-full md:max-w-sm">
             <Label htmlFor="filter-name">Filtrar por nombre</Label>
             <Input
               id="filter-name"
@@ -157,7 +160,7 @@ export default function EventsPage() {
               onChange={(e) => setFilterName(e.target.value)}
             />
           </div>
-          <div>
+          <div className="w-full md:max-w-56">
             <Label htmlFor="filter-date">Filtrar por fecha</Label>
             <Input
               id="filter-date"
@@ -166,19 +169,18 @@ export default function EventsPage() {
               onChange={(e) => setFilterDate(e.target.value)}
             />
           </div>
-        </div>
-        {(filterName || filterDate) && (
           <Button
             variant="outline"
             onClick={() => {
               setFilterName("")
               setFilterDate("")
             }}
-            className="mt-3"
+            className="w-full md:w-auto"
+            disabled={!hasFiltersToClear}
           >
             Limpiar filtros
           </Button>
-        )}
+        </div>
       </div>
 
       <div className="bg-white rounded-lg border mt-4">

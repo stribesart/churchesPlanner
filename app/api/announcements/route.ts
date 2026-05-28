@@ -21,13 +21,68 @@ function getUserDisplayName(user: unknown) {
 function parseAnnouncementInput(body: Record<string, unknown>) {
   const title = typeof body.title === "string" ? body.title.trim() : ""
   const content = typeof body.content === "string" ? body.content.trim() : ""
+  const date = typeof body.date === "string" ? body.date.trim() : ""
   const author = typeof body.author === "string" ? body.author.trim() : ""
+  const registryInput =
+    body.registry && typeof body.registry === "object"
+      ? (body.registry as Record<string, unknown>)
+      : null
+  const registryName =
+    typeof registryInput?.name === "string" ? registryInput.name.trim() : ""
+  const registryEmail =
+    typeof registryInput?.email === "string" ? registryInput.email.trim() : ""
 
   if (!title) return { ok: false as const, message: "El título es obligatorio" }
   if (!content) return { ok: false as const, message: "El contenido es obligatorio" }
+  if (content.length < 50) {
+    return {
+      ok: false as const,
+      message: "La descripción debe tener al menos 50 caracteres",
+    }
+  }
+  if (!date) return { ok: false as const, message: "Selecciona la fecha del anuncio" }
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return { ok: false as const, message: "Selecciona una fecha válida" }
+  }
+  if (Number.isNaN(new Date(`${date}T00:00:00`).getTime())) {
+    return { ok: false as const, message: "Selecciona una fecha válida" }
+  }
   if (!author) return { ok: false as const, message: "El autor es obligatorio" }
 
-  return { ok: true as const, announcement: { title, content, author } }
+  if (registryInput && (!registryName || !registryEmail)) {
+    return {
+      ok: false as const,
+      message: "El registro debe incluir nombre y correo del usuario",
+    }
+  }
+
+  return {
+    ok: true as const,
+    announcement: {
+      title,
+      content,
+      date,
+      author,
+      ...(registryInput
+        ? { registry: { name: registryName, email: registryEmail } }
+        : {}),
+    },
+  }
+}
+
+function normalizeRole(role: unknown) {
+  if (typeof role !== "string") return ""
+
+  const normalizedRole = role
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+
+  return normalizedRole === "administrador" ? "pastor" : normalizedRole
+}
+
+function canAuthorAnnouncement(role: unknown) {
+  return ["pastor", "admin", "lider"].includes(normalizeRole(role))
 }
 
 export async function GET(req: Request) {
@@ -102,6 +157,18 @@ export async function POST(req: Request) {
   }
 
   const db = await getTenantDbByName(tenantDbName)
+  const authorUser = ObjectId.isValid(parsed.announcement.author)
+    ? await db.collection("users").findOne({
+        _id: new ObjectId(parsed.announcement.author),
+      })
+    : null
+
+  if (!authorUser || !canAuthorAnnouncement(authorUser.role)) {
+    return NextResponse.json(
+      { message: "Selecciona un autor válido" },
+      { status: 400 }
+    )
+  }
 
   const newAnnouncement = {
     ...parsed.announcement,

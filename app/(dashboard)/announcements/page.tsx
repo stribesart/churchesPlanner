@@ -32,19 +32,66 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { Pencil, Trash2 } from "lucide-react"
+import { Filter, Pencil, Trash2 } from "lucide-react"
 
 type Announcement = {
   _id: string
   title: string
   content: string
   author: string
+  date?: string
+  registry?: {
+    name: string
+    email: string
+  } | null
   authorName?: string
   createdAt?: string
 }
 
+type AnnouncementAuthor = {
+  _id: string
+  name?: string
+  realName?: string
+  displayName?: string
+  email?: string
+  role?: string
+}
+
+type CurrentUser = AnnouncementAuthor
+
+function normalizeAuthorRole(role?: string) {
+  const normalizedRole = (role || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+
+  return normalizedRole === "administrador" ? "pastor" : normalizedRole
+}
+
+function isAnnouncementAuthor(user: AnnouncementAuthor) {
+  return ["pastor", "admin", "lider"].includes(normalizeAuthorRole(user.role))
+}
+
+function mergeAuthors(users: AnnouncementAuthor[], currentUser?: AnnouncementAuthor | null) {
+  const authorsById = new Map<string, AnnouncementAuthor>()
+
+  users.forEach((user) => {
+    if (isAnnouncementAuthor(user)) {
+      authorsById.set(user._id, user)
+    }
+  })
+
+  if (currentUser && isAnnouncementAuthor(currentUser)) {
+    authorsById.set(currentUser._id, currentUser)
+  }
+
+  return Array.from(authorsById.values())
+}
+
 export default function AnnouncementsPage() {
   const [announcements, setAnnouncements] = useState<Announcement[]>([])
+  const [authors, setAuthors] = useState<AnnouncementAuthor[]>([])
+  const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
   const [open, setOpen] = useState(false)
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null)
   const [filterTitle, setFilterTitle] = useState("")
@@ -53,19 +100,50 @@ export default function AnnouncementsPage() {
   const [submitting, setSubmitting] = useState(false)
 
   async function fetchAnnouncements() {
-    const res = await fetch("/api/announcements")
-    const data = await res.json()
-    setAnnouncements(data)
+    const [announcementsRes, usersRes, meRes] = await Promise.all([
+      fetch("/api/announcements"),
+      fetch("/api/users"),
+      fetch("/api/auth/me"),
+    ])
+    const announcementsData = await announcementsRes.json()
+    const usersData = usersRes.ok ? await usersRes.json() : []
+    const meData = meRes.ok ? await meRes.json() : null
+
+    setAnnouncements(Array.isArray(announcementsData) ? announcementsData : [])
+    setAuthors(
+      mergeAuthors(
+        Array.isArray(usersData) ? usersData : [],
+        meData?.user || null
+      )
+    )
+    setCurrentUser(meData?.user || null)
   }
 
   useEffect(() => {
     let isMounted = true
 
-    fetch("/api/announcements")
-      .then((res) => res.json())
-      .then((data) => {
+    Promise.all([
+      fetch("/api/announcements"),
+      fetch("/api/users"),
+      fetch("/api/auth/me"),
+    ])
+      .then(async ([announcementsRes, usersRes, meRes]) => {
+        const announcementsData = await announcementsRes.json()
+        const usersData = usersRes.ok ? await usersRes.json() : []
+        const meData = meRes.ok ? await meRes.json() : null
+
+        return { announcementsData, usersData, meData }
+      })
+      .then(({ announcementsData, usersData, meData }) => {
         if (isMounted) {
-          setAnnouncements(data)
+          setAnnouncements(Array.isArray(announcementsData) ? announcementsData : [])
+          setAuthors(
+            mergeAuthors(
+              Array.isArray(usersData) ? usersData : [],
+              meData?.user || null
+            )
+          )
+          setCurrentUser(meData?.user || null)
           setLoading(false)
         }
       })
@@ -84,11 +162,13 @@ export default function AnnouncementsPage() {
       return matchesTitle
     }
 
-    if (!announcement.createdAt) {
+    const announcementDateValue = announcement.date || announcement.createdAt
+
+    if (!announcementDateValue) {
       return false
     }
 
-    const announcementDate = new Date(announcement.createdAt)
+    const announcementDate = new Date(announcementDateValue)
     const filterDateObj = new Date(filterDate)
 
     if (Number.isNaN(announcementDate.getTime())) {
@@ -100,6 +180,7 @@ export default function AnnouncementsPage() {
 
     return matchesTitle && announcementDateStr === filterDateStr
   })
+  const hasFiltersToClear = Boolean(filterTitle) || Boolean(filterDate)
 
   async function handleDelete(id: string) {
     setSubmitting(true)
@@ -138,18 +219,22 @@ export default function AnnouncementsPage() {
         + Nuevo anuncio
       </Button>
 
-      <div className="bg-white rounded-lg border p-4 mt-4 mb-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
+      <div className="mt-4 mb-4 rounded-lg border bg-white p-4">
+        <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
+          <Filter className="h-4 w-4" />
+          Filtros
+        </div>
+        <div className="flex flex-col gap-4 md:flex-row md:items-end">
+          <div className="w-full md:max-w-sm">
             <Label htmlFor="filter-title">Filtrar por título</Label>
             <Input
               id="filter-title"
-              placeholder="Buscar por nombre..."
+              placeholder="Buscar por título..."
               value={filterTitle}
               onChange={(e) => setFilterTitle(e.target.value)}
             />
           </div>
-          <div>
+          <div className="w-full md:max-w-56">
             <Label htmlFor="filter-date">Filtrar por fecha</Label>
             <Input
               id="filter-date"
@@ -158,19 +243,18 @@ export default function AnnouncementsPage() {
               onChange={(e) => setFilterDate(e.target.value)}
             />
           </div>
-        </div>
-        {(filterTitle || filterDate) && (
           <Button
             variant="outline"
             onClick={() => {
               setFilterTitle("")
               setFilterDate("")
             }}
-            className="mt-3"
+            className="w-full md:w-auto"
+            disabled={!hasFiltersToClear}
           >
             Limpiar filtros
           </Button>
-        )}
+        </div>
       </div>
 
       <div className="bg-white rounded-lg border mt-4">
@@ -178,7 +262,8 @@ export default function AnnouncementsPage() {
           <TableHeader>
             <TableRow>
               <TableHead>Título</TableHead>
-              <TableHead>Contenido</TableHead>
+              <TableHead className="w-[360px]">Contenido</TableHead>
+              <TableHead>Fecha</TableHead>
               <TableHead>Autor</TableHead>
               <TableHead>Acciones</TableHead>
             </TableRow>
@@ -186,10 +271,10 @@ export default function AnnouncementsPage() {
 
           <TableBody>
             {loading ? (
-              <TableSkeletonRows columns={4} rows={6} />
+              <TableSkeletonRows columns={5} rows={6} />
             ) : filteredAnnouncements.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4} className="text-center text-gray-500">
+                <TableCell colSpan={5} className="text-center text-gray-500">
                   No hay anuncios que coincidan con los filtros
                 </TableCell>
               </TableRow>
@@ -197,7 +282,10 @@ export default function AnnouncementsPage() {
               filteredAnnouncements.map((announcement) => (
                 <TableRow key={announcement._id}>
                   <TableCell>{announcement.title}</TableCell>
-                  <TableCell>{announcement.content}</TableCell>
+                  <TableCell className="w-[360px] max-w-[360px] whitespace-normal">
+                    <p className="line-clamp-2">{announcement.content}</p>
+                  </TableCell>
+                  <TableCell>{announcement.date || "-"}</TableCell>
                   <TableCell>{announcement.authorName || "Sistema"}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -279,6 +367,8 @@ export default function AnnouncementsPage() {
         open={open}
         onOpenChange={setOpen}
         announcement={selectedAnnouncement}
+        authors={authors}
+        currentUser={currentUser}
         onSuccess={fetchAnnouncements}
         submitting={submitting}
         onSubmittingChange={setSubmitting}
