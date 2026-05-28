@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Pencil, Trash2 } from "lucide-react"
+import { Filter, Pencil, Trash2 } from "lucide-react"
 
 import {
   AlertDialog,
@@ -55,6 +55,7 @@ import { TypographyH1 } from "@/components/ui/typography"
 type InventoryItem = {
   _id: string
   name: string
+  serialNumber?: string
   quantity: number
   condition: InventoryCondition
   status: InventoryStatus
@@ -147,6 +148,9 @@ export default function InventoryPage() {
   const [currentUser, setCurrentUser] = useState<CurrentUser | null>(null)
   const [open, setOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null)
+  const [filterName, setFilterName] = useState("")
+  const [filterSerialNumber, setFilterSerialNumber] = useState("")
+  const [filterMinistryId, setFilterMinistryId] = useState("")
   const [loading, setLoading] = useState(true)
   const [pageError, setPageError] = useState("")
   const [submitting, setSubmitting] = useState(false)
@@ -240,6 +244,25 @@ export default function InventoryPage() {
   const ministeriesByKey = useMemo(() => {
     return new Map(ministeries.map((ministry) => [getMinistryKey(ministry), ministry]))
   }, [ministeries])
+  const filteredItems = items.filter((item) => {
+    const matchesName =
+      !filterName.trim() ||
+      item.name.toLowerCase().includes(filterName.trim().toLowerCase())
+    const matchesSerialNumber =
+      !filterSerialNumber.trim() ||
+      (item.serialNumber || "")
+        .toLowerCase()
+        .includes(filterSerialNumber.trim().toLowerCase())
+    const matchesMinistry =
+      !filterMinistryId ||
+      (filterMinistryId === generalValue
+        ? !item.ministryId
+        : item.ministryId === filterMinistryId)
+
+    return matchesName && matchesSerialNumber && matchesMinistry
+  })
+  const hasFiltersToClear =
+    Boolean(filterName) || Boolean(filterSerialNumber) || Boolean(filterMinistryId)
 
   return (
     <div>
@@ -249,25 +272,82 @@ export default function InventoryPage() {
         className="fixed z-[70]"
       />
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <TypographyH1 className="text-left">Inventario</TypographyH1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Recursos asignados a la iglesia y sus ministerios.
-          </p>
-        </div>
-        <Button
-          onClick={() => {
-            setSelectedItem(null)
-            setOpen(true)
-          }}
-          disabled={submitting}
-        >
-          + Nuevo recurso
-        </Button>
+      <div>
+        <TypographyH1 className="text-left">Inventario</TypographyH1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Recursos asignados a la iglesia y sus ministerios.
+        </p>
       </div>
 
-      <div className="mt-6 rounded-lg border bg-white">
+      <Button
+        onClick={() => {
+          setSelectedItem(null)
+          setOpen(true)
+        }}
+        disabled={submitting}
+        className="mt-4"
+      >
+        + Nuevo recurso
+      </Button>
+
+      <div className="mt-4 mb-4 rounded-lg border bg-white p-4">
+        <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
+          <Filter className="h-4 w-4" />
+          Filtros
+        </div>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
+          <div className="w-full lg:max-w-sm">
+            <FieldLabel htmlFor="filter-inventory-name">Filtrar por nombre</FieldLabel>
+            <Input
+              id="filter-inventory-name"
+              placeholder="Buscar por nombre..."
+              value={filterName}
+              onChange={(event) => setFilterName(event.target.value)}
+            />
+          </div>
+          <div className="w-full lg:max-w-56">
+            <FieldLabel htmlFor="filter-inventory-serial">
+              Filtrar por # de serie
+            </FieldLabel>
+            <Input
+              id="filter-inventory-serial"
+              placeholder="Serie..."
+              value={filterSerialNumber}
+              onChange={(event) => setFilterSerialNumber(event.target.value)}
+            />
+          </div>
+          <div className="w-full lg:max-w-64">
+            <FieldLabel>Filtrar por ministerio</FieldLabel>
+            <Select value={filterMinistryId} onValueChange={setFilterMinistryId}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Todos los ministerios" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={generalValue}>Inventario general</SelectItem>
+                {ministeries.map((ministry) => (
+                  <SelectItem key={ministry._id} value={getMinistryKey(ministry)}>
+                    {ministry.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setFilterName("")
+              setFilterSerialNumber("")
+              setFilterMinistryId("")
+            }}
+            className="w-full lg:w-auto"
+            disabled={!hasFiltersToClear}
+          >
+            Limpiar filtros
+          </Button>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-lg border bg-white">
         <Table containerClassName="max-h-[60vh]">
           <TableHeader>
             <TableRow>
@@ -291,14 +371,14 @@ export default function InventoryPage() {
               </TableRow>
             ) : loading ? (
               <TableSkeletonRows columns={9} rows={6} />
-            ) : items.length === 0 ? (
+            ) : filteredItems.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={9} className="text-center text-muted-foreground">
                   Todavía no hay recursos registrados.
                 </TableCell>
               </TableRow>
             ) : (
-              items.map((item) => {
+              filteredItems.map((item) => {
                 const canEdit =
                   !leader || (item.ministryId && item.ministryId === currentMinistryId)
 
