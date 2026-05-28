@@ -29,6 +29,9 @@ type InviteInfo = {
   expiresAt: string
 }
 
+type InviteField = "name" | "email" | "password" | "confirmPassword"
+type InviteFieldErrors = Partial<Record<InviteField, string>>
+
 export default function InvitePage() {
   const params = useParams<{ token: string }>()
   const token = params.token
@@ -44,6 +47,7 @@ export default function InvitePage() {
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [error, setError] = useState("")
+  const [fieldErrors, setFieldErrors] = useState<InviteFieldErrors>({})
 
   useEffect(() => {
     let ignore = false
@@ -51,6 +55,7 @@ export default function InvitePage() {
     async function fetchInvite() {
       setLoading(true)
       setError("")
+      setFieldErrors({})
 
       const res = await fetch(`/api/invites/${token}`)
       const data = await res.json()
@@ -84,19 +89,39 @@ export default function InvitePage() {
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setError("")
+    setFieldErrors({})
 
-    if (!name.trim() || !email.trim() || !password) {
-      setError("Completa todos los campos.")
-      return
+    const trimmedName = name.trim()
+    const trimmedEmail = email.trim().toLowerCase()
+    const trimmedPassword = password.trim()
+    const trimmedConfirmPassword = confirmPassword.trim()
+    const nextFieldErrors: InviteFieldErrors = {}
+
+    if (!trimmedName) {
+      nextFieldErrors.name = "El nombre es obligatorio."
     }
 
-    if (!isPasswordValid(password)) {
-      setError("La contraseña debe tener mínimo 8 caracteres, incluir una mayúscula, letras y un número.")
-      return
+    if (!trimmedEmail) {
+      nextFieldErrors.email = "El correo electrónico es obligatorio."
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      nextFieldErrors.email = "Ingresa un correo electrónico válido."
     }
 
-    if (password !== confirmPassword) {
-      setError("Las contraseñas no coinciden.")
+    if (!trimmedPassword) {
+      nextFieldErrors.password = "La contraseña es obligatoria."
+    } else if (!isPasswordValid(trimmedPassword)) {
+      nextFieldErrors.password =
+        "La contraseña debe tener mínimo 8 caracteres, incluir una mayúscula, letras y un número."
+    }
+
+    if (!trimmedConfirmPassword) {
+      nextFieldErrors.confirmPassword = "Confirma tu contraseña."
+    } else if (trimmedPassword && trimmedPassword !== trimmedConfirmPassword) {
+      nextFieldErrors.confirmPassword = "Las contraseñas no coinciden."
+    }
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors)
       return
     }
 
@@ -107,7 +132,11 @@ export default function InvitePage() {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({
+        name: trimmedName,
+        email: trimmedEmail,
+        password: trimmedPassword,
+      }),
     })
     const data = await res.json()
 
@@ -119,6 +148,18 @@ export default function InvitePage() {
     }
 
     setError(data?.message || "No se pudo crear la cuenta.")
+  }
+
+  function clearFieldError(field: InviteField) {
+    setFieldErrors((currentErrors) => {
+      if (!currentErrors[field]) return currentErrors
+
+      const nextErrors = { ...currentErrors }
+      delete nextErrors[field]
+
+      return nextErrors
+    })
+    setError("")
   }
 
   return (
@@ -158,9 +199,14 @@ export default function InvitePage() {
                   <FieldLabel>Nombre</FieldLabel>
                   <Input
                     value={name}
-                    onChange={(event) => setName(event.target.value)}
+                    onChange={(event) => {
+                      setName(event.target.value)
+                      clearFieldError("name")
+                    }}
                     placeholder="Nombre completo"
+                    aria-invalid={Boolean(fieldErrors.name)}
                   />
+                  <FieldError>{fieldErrors.name}</FieldError>
                   </Field>
 
                   <Field>
@@ -168,9 +214,14 @@ export default function InvitePage() {
                   <Input
                     type="email"
                     value={email}
-                    onChange={(event) => setEmail(event.target.value)}
+                    onChange={(event) => {
+                      setEmail(event.target.value)
+                      clearFieldError("email")
+                    }}
                     placeholder="correo@ejemplo.com"
+                    aria-invalid={Boolean(fieldErrors.email)}
                   />
+                  <FieldError>{fieldErrors.email}</FieldError>
                   </Field>
 
                   <Field>
@@ -179,9 +230,13 @@ export default function InvitePage() {
                     <Input
                       type={showPassword ? "text" : "password"}
                       value={password}
-                      onChange={(event) => setPassword(event.target.value)}
+                      onChange={(event) => {
+                        setPassword(event.target.value)
+                        clearFieldError("password")
+                      }}
                       placeholder="********"
                       className="pr-10"
+                      aria-invalid={Boolean(fieldErrors.password)}
                     />
                     <button
                       type="button"
@@ -199,6 +254,7 @@ export default function InvitePage() {
                   <FieldDescription>
                     Mínimo 8 caracteres, una mayúscula y un número.
                   </FieldDescription>
+                  <FieldError>{fieldErrors.password}</FieldError>
                   </Field>
 
                   <Field>
@@ -207,9 +263,13 @@ export default function InvitePage() {
                     <Input
                       type={showConfirmPassword ? "text" : "password"}
                       value={confirmPassword}
-                      onChange={(event) => setConfirmPassword(event.target.value)}
+                      onChange={(event) => {
+                        setConfirmPassword(event.target.value)
+                        clearFieldError("confirmPassword")
+                      }}
                       placeholder="********"
                       className="pr-10"
+                      aria-invalid={Boolean(fieldErrors.confirmPassword)}
                     />
                     <button
                       type="button"
@@ -228,6 +288,7 @@ export default function InvitePage() {
                       )}
                     </button>
                   </div>
+                  <FieldError>{fieldErrors.confirmPassword}</FieldError>
                   </Field>
 
                   <FieldError>{error}</FieldError>

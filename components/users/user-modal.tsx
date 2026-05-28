@@ -13,6 +13,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Label } from "@/components/ui/label"
+import { FieldError } from "@/components/ui/field"
 import {
   Select,
   SelectContent,
@@ -38,6 +39,9 @@ type MinistryRole = {
   _id: string
   name: string
 }
+
+type UserField = "name" | "email" | "password" | "ministryRoleId"
+type UserFieldErrors = Partial<Record<UserField, string>>
 
 type Props = {
   open: boolean
@@ -95,6 +99,7 @@ function UserModalForm({
   const [ministryRoleId, setMinistryRoleId] = useState(user?.ministryRoleId ?? "")
   const [rolesLoading, setRolesLoading] = useState(false)
   const [error, setError] = useState("")
+  const [fieldErrors, setFieldErrors] = useState<UserFieldErrors>({})
   const [saving, setSaving] = useState(false)
 
   async function fetchMinistryRoles() {
@@ -104,6 +109,7 @@ function UserModalForm({
 
     setRolesLoading(true)
     setError("")
+    setFieldErrors({})
 
     const res = await fetch("/api/ministry-roles")
 
@@ -120,37 +126,39 @@ function UserModalForm({
 
   async function handleSubmit() {
     setError("")
+    setFieldErrors({})
 
     const trimmedName = name.trim()
     const trimmedEmail = email.trim().toLowerCase()
+    const trimmedPassword = password.trim()
+    const nextFieldErrors: UserFieldErrors = {}
 
     if (!trimmedName) {
-      setError("El nombre es obligatorio.")
-      return
+      nextFieldErrors.name = "El nombre es obligatorio."
     }
 
     if (!trimmedEmail) {
-      setError("El correo electrónico es obligatorio.")
-      return
+      nextFieldErrors.email = "El correo electrónico es obligatorio."
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      nextFieldErrors.email = "Ingresa un correo electrónico válido."
     }
 
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
-      setError("Ingresa un correo electrónico válido.")
-      return
-    }
-
-    if (!isEdit && !password.trim()) {
-      setError("La contraseña es obligatoria.")
-      return
-    }
-
-    if (password.trim() && !/(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{8,}/.test(password.trim())) {
-      setError("La contraseña debe tener mínimo 8 caracteres, incluir una mayúscula, letras y un número.")
-      return
+    if (!isEdit && !trimmedPassword) {
+      nextFieldErrors.password = "La contraseña es obligatoria."
+    } else if (
+      trimmedPassword &&
+      !/(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{8,}/.test(trimmedPassword)
+    ) {
+      nextFieldErrors.password =
+        "La contraseña debe tener mínimo 8 caracteres, incluir una mayúscula, letras y un número."
     }
 
     if (isCurrentUserLeader && !ministryRoleId) {
-      setError("Primero selecciona un rol del ministerio.")
+      nextFieldErrors.ministryRoleId = "Primero selecciona un rol del ministerio."
+    }
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setFieldErrors(nextFieldErrors)
       return
     }
 
@@ -170,7 +178,7 @@ function UserModalForm({
       body: JSON.stringify({
         name: trimmedName,
         email: trimmedEmail,
-        password: password.trim(),
+        password: trimmedPassword,
         role: isCurrentUserLeader ? "miembro colaborador" : role,
         ministryRoleId: isCurrentUserLeader ? ministryRoleId : undefined,
       }),
@@ -185,6 +193,18 @@ function UserModalForm({
     } else {
       setError(data?.message || "No se pudo guardar el usuario. Intenta de nuevo.")
     }
+  }
+
+  function clearFieldError(field: UserField) {
+    setFieldErrors((currentErrors) => {
+      if (!currentErrors[field]) return currentErrors
+
+      const nextErrors = { ...currentErrors }
+      delete nextErrors[field]
+
+      return nextErrors
+    })
+    setError("")
   }
 
   return (
@@ -205,12 +225,28 @@ function UserModalForm({
       <div className="space-y-4">
         <div>
           <Label>Nombre</Label>
-          <Input value={name} onChange={(e) => setName(e.target.value)} />
+          <Input
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value)
+              clearFieldError("name")
+            }}
+            aria-invalid={Boolean(fieldErrors.name)}
+          />
+          <FieldError>{fieldErrors.name}</FieldError>
         </div>
 
         <div>
           <Label>Email</Label>
-          <Input value={email} onChange={(e) => setEmail(e.target.value)} />
+          <Input
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value)
+              clearFieldError("email")
+            }}
+            aria-invalid={Boolean(fieldErrors.email)}
+          />
+          <FieldError>{fieldErrors.email}</FieldError>
         </div>
 
         <div>
@@ -220,8 +256,12 @@ function UserModalForm({
               type={showPassword ? "text" : "password"}
               placeholder={isEdit ? "Opcional" : ""}
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => {
+                setPassword(e.target.value)
+                clearFieldError("password")
+              }}
               className="pr-10"
+              aria-invalid={Boolean(fieldErrors.password)}
             />
             <button
               type="button"
@@ -238,6 +278,7 @@ function UserModalForm({
               )}
             </button>
           </div>
+          <FieldError>{fieldErrors.password}</FieldError>
         </div>
 
         {isCurrentUserLeader ? (
@@ -254,8 +295,17 @@ function UserModalForm({
                 alta colaboradores.
               </p>
             ) : (
-              <Select value={ministryRoleId} onValueChange={setMinistryRoleId}>
-                <SelectTrigger className="w-full">
+              <Select
+                value={ministryRoleId}
+                onValueChange={(value) => {
+                  setMinistryRoleId(value)
+                  clearFieldError("ministryRoleId")
+                }}
+              >
+                <SelectTrigger
+                  className="w-full"
+                  aria-invalid={Boolean(fieldErrors.ministryRoleId)}
+                >
                   <SelectValue placeholder="Selecciona un rol" />
                 </SelectTrigger>
                 <SelectContent>
@@ -267,6 +317,7 @@ function UserModalForm({
                 </SelectContent>
               </Select>
             )}
+            <FieldError>{fieldErrors.ministryRoleId}</FieldError>
           </div>
         ) : (
           <div>
