@@ -1,4 +1,5 @@
 import clientPromise from "@/lib/mongodb"
+import { readSignedSession, sessionUserToDocument } from "@/lib/session"
 import { ObjectId, type Db } from "mongodb"
 
 export function normalizeEmail(email: string) {
@@ -158,6 +159,12 @@ function getCookieValue(req: Request | { headers: Headers }, name: string) {
 }
 
 export async function getTenantFromRequest(req: Request | { headers: Headers }) {
+  const signedSession = readSignedSession(req)
+
+  if (signedSession) {
+    return signedSession.tenantDbName
+  }
+
   const session = getCookieValue(req, "session")
   const tenant = getCookieValue(req, "tenant")
 
@@ -177,6 +184,15 @@ export async function getTenantFromRequest(req: Request | { headers: Headers }) 
 }
 
 export async function getCurrentTenantUser(req: Request | { headers: Headers }) {
+  const signedSession = readSignedSession(req)
+
+  if (signedSession) {
+    return {
+      tenantDbName: signedSession.tenantDbName,
+      user: sessionUserToDocument(signedSession),
+    }
+  }
+
   const session = getCookieValue(req, "session")
   const tenantDbName = await getTenantFromRequest(req)
 

@@ -34,6 +34,8 @@ type User = {
   role: string
 }
 
+type PaymentMethod = "transfer" | "card"
+
 type Event = {
   _id?: string
   name: string
@@ -43,6 +45,10 @@ type Event = {
   endTime: string
   location: string
   organizer: string
+  requiresRegistration?: boolean
+  isPaidEvent?: boolean
+  paymentAmount?: number | null
+  paymentMethod?: PaymentMethod | null
 }
 
 type EventField =
@@ -52,6 +58,7 @@ type EventField =
   | "endTime"
   | "location"
   | "organizer"
+  | "paymentAmount"
 type EventFieldErrors = Partial<Record<EventField, string>>
 
 type Props = {
@@ -88,6 +95,16 @@ export default function EventModal({
   const [endTime, setEndTime] = useState(event?.endTime ?? "")
   const [location, setLocation] = useState(event?.location ?? "")
   const [organizer, setOrganizer] = useState<string>(event?.organizer ?? "")
+  const [requiresRegistration, setRequiresRegistration] = useState(
+    event?.requiresRegistration ?? false
+  )
+  const [isPaidEvent, setIsPaidEvent] = useState(event?.isPaidEvent ?? false)
+  const [paymentAmount, setPaymentAmount] = useState(
+    event?.paymentAmount ? String(event.paymentAmount) : ""
+  )
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
+    event?.paymentMethod || "transfer"
+  )
   const [error, setError] = useState("")
   const [fieldErrors, setFieldErrors] = useState<EventFieldErrors>({})
 
@@ -102,6 +119,8 @@ export default function EventModal({
     const trimmedEndTime = endTime.trim()
     const trimmedLocation = location.trim()
     const trimmedOrganizer = organizer.trim()
+    const trimmedPaymentAmount = paymentAmount.trim()
+    const parsedPaymentAmount = Number(trimmedPaymentAmount)
     const nextFieldErrors: EventFieldErrors = {}
 
     if (!trimmedName) {
@@ -139,6 +158,15 @@ export default function EventModal({
       nextFieldErrors.organizer = "Selecciona un organizador válido."
     }
 
+    if (
+      isPaidEvent &&
+      (!trimmedPaymentAmount ||
+        !Number.isFinite(parsedPaymentAmount) ||
+        parsedPaymentAmount <= 0)
+    ) {
+      nextFieldErrors.paymentAmount = "Ingresa un monto mayor a 0."
+    }
+
     if (Object.keys(nextFieldErrors).length > 0) {
       setFieldErrors(nextFieldErrors)
       return
@@ -166,6 +194,10 @@ export default function EventModal({
           endTime: trimmedEndTime,
           location: trimmedLocation,
           organizer: trimmedOrganizer,
+          requiresRegistration,
+          isPaidEvent,
+          paymentAmount: isPaidEvent ? parsedPaymentAmount : null,
+          paymentMethod: isPaidEvent ? paymentMethod : null,
         }),
       })
       const data = await res.json()
@@ -329,6 +361,74 @@ export default function EventModal({
             </Select>
             <FieldError>{fieldErrors.organizer}</FieldError>
           </Field>
+
+          <div className="grid grid-cols-1 gap-3 rounded-md border p-3 sm:grid-cols-2">
+            <label className="flex items-start gap-3 text-sm font-medium">
+              <Input
+                type="checkbox"
+                checked={requiresRegistration}
+                onChange={(e) => setRequiresRegistration(e.target.checked)}
+                className="mt-0.5 h-4 w-4"
+                disabled={submitting}
+              />
+              <span>Necesita registro</span>
+            </label>
+
+            <label className="flex items-start gap-3 text-sm font-medium">
+              <Input
+                type="checkbox"
+                checked={isPaidEvent}
+                onChange={(e) => {
+                  setIsPaidEvent(e.target.checked)
+                  clearFieldError("paymentAmount")
+                }}
+                className="mt-0.5 h-4 w-4"
+                disabled={submitting}
+              />
+              <span>Es un evento de pago</span>
+            </label>
+          </div>
+
+          {isPaidEvent ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Field>
+                <FieldLabel>Monto a pagar</FieldLabel>
+                <Input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={paymentAmount}
+                  onChange={(e) => {
+                    setPaymentAmount(e.target.value)
+                    clearFieldError("paymentAmount")
+                  }}
+                  aria-invalid={Boolean(fieldErrors.paymentAmount)}
+                  disabled={submitting}
+                  placeholder="0.00"
+                />
+                <FieldError>{fieldErrors.paymentAmount}</FieldError>
+              </Field>
+
+              <Field>
+                <FieldLabel>Método de pago</FieldLabel>
+                <Select
+                  value={paymentMethod}
+                  onValueChange={(value) =>
+                    setPaymentMethod(value as PaymentMethod)
+                  }
+                  disabled={submitting}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecciona método" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="transfer">Transferencia</SelectItem>
+                    <SelectItem value="card">Tarjeta</SelectItem>
+                  </SelectContent>
+                </Select>
+              </Field>
+            </div>
+          ) : null}
 
           <FieldError>{error}</FieldError>
         </FieldGroup>

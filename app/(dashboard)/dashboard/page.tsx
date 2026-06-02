@@ -9,6 +9,7 @@ import {
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import {
   Card,
   CardAction,
@@ -18,6 +19,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { FieldError } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
+import { SubmittingOverlay } from "@/components/ui/submitting-overlay"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { OfferingsChart } from "@/components/dashboard/offerings-chart"
@@ -28,6 +40,8 @@ type User = {
   name?: string
   displayName?: string
   email?: string
+  contact?: string
+  phone?: string
   role?: string
   createdAt?: string
 }
@@ -36,21 +50,34 @@ type Church = {
   churchName?: string
 }
 
+type PaymentMethod = "transfer" | "card"
+
 type Event = {
   _id: string
   name?: string
   description?: string
   date?: string
   startTime?: string
+  endTime?: string
   location?: string
+  organizerName?: string
+  requiresRegistration?: boolean
+  isPaidEvent?: boolean
+  paymentAmount?: number | null
+  paymentMethod?: PaymentMethod | null
 }
 
 type Announcement = {
   _id: string
   title?: string
   content?: string
+  date?: string
   authorName?: string
   createdAt?: string
+  registry?: {
+    name?: string
+    email?: string
+  } | null
 }
 
 type Offering = {
@@ -60,6 +87,21 @@ type Offering = {
   createdAt?: string
 }
 
+type PaymentStatus = "paid" | "pending" | "not_required"
+
+type EventRegistration = {
+  _id: string
+  eventId: string
+  name?: string
+  email?: string
+  contact?: string
+  paymentRequired?: boolean
+  paymentAmount?: number | null
+  paymentMethod?: PaymentMethod | null
+  paymentStatus?: PaymentStatus
+  paymentPending?: boolean
+}
+
 type DashboardState = {
   user: User | null
   church: Church | null
@@ -67,7 +109,37 @@ type DashboardState = {
   events: Event[]
   announcements: Announcement[]
   offerings: Offering[]
+  eventRegistrations: EventRegistration[]
 }
+
+type CommunityItemDetail = {
+  id: string
+  type: "event" | "announcement"
+  title: string
+  description: string
+  dateLabel: string
+  timeLabel?: string
+  location?: string
+  createdBy?: string
+  requiresRegistration?: boolean
+  isPaidEvent?: boolean
+  paymentAmount?: number | null
+  paymentMethod?: PaymentMethod | null
+  registration?: EventRegistration | null
+  registeredCount?: number
+  registry?: {
+    name?: string
+    email?: string
+  } | null
+}
+
+type CommunityMessage = {
+  tone: "success" | "warning"
+  text: string
+} | null
+
+type RegistrationField = "name" | "email" | "contact"
+type RegistrationFieldErrors = Partial<Record<RegistrationField, string>>
 
 function formatRole(role?: string) {
   if (!role) return "Miembro"
@@ -124,6 +196,69 @@ function formatDateTime(value?: string) {
   })
 }
 
+function formatMoney(amount?: number | null) {
+  if (typeof amount !== "number" || !Number.isFinite(amount)) {
+    return "$0.00 MXN"
+  }
+
+  return new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency: "MXN",
+  }).format(amount)
+}
+
+function getEventDetail(
+  event: Event,
+  registrations: EventRegistration[],
+  currentUserEmail?: string
+): CommunityItemDetail {
+  const timeLabel =
+    event.startTime && event.endTime
+      ? `${event.startTime} - ${event.endTime}`
+      : event.startTime || undefined
+  const normalizedCurrentEmail = currentUserEmail?.trim().toLowerCase()
+  const eventRegistrations = registrations.filter(
+    (registration) => registration.eventId === event._id
+  )
+  const currentUserRegistration =
+    eventRegistrations.find(
+      (registration) =>
+        normalizedCurrentEmail &&
+        registration.email?.trim().toLowerCase() === normalizedCurrentEmail
+    ) || null
+
+  return {
+    id: event._id,
+    type: "event",
+    title: event.name || "Evento",
+    description: event.description || "Sin descripción",
+    dateLabel: formatDate(event.date),
+    timeLabel,
+    location: event.location,
+    createdBy: event.organizerName,
+    requiresRegistration: event.requiresRegistration,
+    isPaidEvent: event.isPaidEvent,
+    paymentAmount: event.paymentAmount,
+    paymentMethod: event.paymentMethod,
+    registration: currentUserRegistration,
+    registeredCount: eventRegistrations.length,
+  }
+}
+
+function getAnnouncementDetail(announcement: Announcement): CommunityItemDetail {
+  return {
+    id: announcement._id,
+    type: "announcement",
+    title: announcement.title || "Anuncio",
+    description: announcement.content || "Sin contenido",
+    dateLabel: announcement.date
+      ? formatDate(announcement.date)
+      : formatDateTime(announcement.createdAt),
+    createdBy: announcement.authorName,
+    registry: announcement.registry,
+  }
+}
+
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardState>({
     user: null,
@@ -132,10 +267,15 @@ export default function DashboardPage() {
     events: [],
     announcements: [],
     offerings: [],
+    eventRegistrations: [],
   })
   const [loading, setLoading] = useState(true)
   const [dashboardTab, setDashboardTab] = useState("administration")
   const [analyticsTab, setAnalyticsTab] = useState("users")
+  const [selectedCommunityItem, setSelectedCommunityItem] =
+    useState<CommunityItemDetail | null>(null)
+  const [communityMessage, setCommunityMessage] =
+    useState<CommunityMessage>(null)
 
   useEffect(() => {
     let ignore = false
@@ -155,6 +295,11 @@ export default function DashboardPage() {
         const announcementsData = announcementsRes.ok
           ? await announcementsRes.json()
           : []
+        const eventRegistrationsData = meRes.ok
+          ? await fetch("/api/event-registrations").then((res) =>
+              res.ok ? res.json() : { registrations: [] }
+            )
+          : { registrations: [] }
         const canFetchOfferings = isAdminDashboardRole(meData?.user?.role)
         const offeringsData = canFetchOfferings
           ? await fetch("/api/offerings").then((res) =>
@@ -176,6 +321,9 @@ export default function DashboardPage() {
             : [],
           offerings: Array.isArray(offeringsData.offerings)
             ? offeringsData.offerings
+            : [],
+          eventRegistrations: Array.isArray(eventRegistrationsData.registrations)
+            ? eventRegistrationsData.registrations
             : [],
         })
       } catch (error) {
@@ -230,6 +378,18 @@ export default function DashboardPage() {
     canSeeAnalytics && dashboardTab === "administration"
       ? "administration"
       : "community"
+
+  async function refreshEventRegistrations() {
+    const res = await fetch("/api/event-registrations")
+    const data = res.ok ? await res.json() : { registrations: [] }
+
+    setData((currentData) => ({
+      ...currentData,
+      eventRegistrations: Array.isArray(data.registrations)
+        ? data.registrations
+        : [],
+    }))
+  }
 
   if (loading) {
     return (
@@ -397,6 +557,18 @@ export default function DashboardPage() {
         ) : null}
 
         <TabsContent value="community">
+          {communityMessage ? (
+            <div
+              className={
+                communityMessage.tone === "warning"
+                  ? "rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900"
+                  : "rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-900"
+              }
+            >
+              {communityMessage.text}
+            </div>
+          ) : null}
+
           <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <Card className="min-w-0">
               <CardHeader>
@@ -415,9 +587,19 @@ export default function DashboardPage() {
                   </p>
                 ) : (
                   nextEvents.map((event) => (
-                    <div
+                    <button
                       key={event._id}
-                      className="rounded-lg border bg-background px-3 py-3"
+                      type="button"
+                      onClick={() =>
+                        setSelectedCommunityItem(
+                          getEventDetail(
+                            event,
+                            data.eventRegistrations,
+                            data.user?.email
+                          )
+                        )
+                      }
+                      className="w-full rounded-lg border bg-background px-3 py-3 text-left transition hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                     >
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0">
@@ -436,7 +618,7 @@ export default function DashboardPage() {
                         {event.startTime ? `${event.startTime}` : "Hora por definir"}
                         {event.location ? ` · ${event.location}` : ""}
                       </p>
-                    </div>
+                    </button>
                   ))
                 )}
               </CardContent>
@@ -459,9 +641,15 @@ export default function DashboardPage() {
                   </p>
                 ) : (
                   recentAnnouncements.map((announcement) => (
-                    <div
+                    <button
                       key={announcement._id}
-                      className="rounded-lg border bg-background px-3 py-3"
+                      type="button"
+                      onClick={() =>
+                        setSelectedCommunityItem(
+                          getAnnouncementDetail(announcement)
+                        )
+                      }
+                      className="w-full rounded-lg border bg-background px-3 py-3 text-left transition hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
                     >
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                         <div className="min-w-0">
@@ -481,7 +669,7 @@ export default function DashboardPage() {
                           ? `Publicado por ${announcement.authorName}`
                           : "Publicado para la comunidad"}
                       </p>
-                    </div>
+                    </button>
                   ))
                 )}
               </CardContent>
@@ -489,6 +677,466 @@ export default function DashboardPage() {
           </section>
         </TabsContent>
       </Tabs>
+
+      <CommunityItemModal
+        item={selectedCommunityItem}
+        currentUser={data.user}
+        onActionSuccess={setCommunityMessage}
+        onRegistrationsRefresh={refreshEventRegistrations}
+        open={Boolean(selectedCommunityItem)}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            setSelectedCommunityItem(null)
+          }
+        }}
+      />
+    </div>
+  )
+}
+
+function CommunityItemModal({
+  item,
+  currentUser,
+  onActionSuccess,
+  onRegistrationsRefresh,
+  open,
+  onOpenChange,
+}: {
+  item: CommunityItemDetail | null
+  currentUser: User | null
+  onActionSuccess: (message: CommunityMessage) => void
+  onRegistrationsRefresh: () => Promise<void>
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  const userName =
+    currentUser?.displayName || currentUser?.name || ""
+  const userEmail = currentUser?.email || ""
+  const userContact = currentUser?.contact || currentUser?.phone || ""
+  const [registrationName, setRegistrationName] = useState(userName)
+  const [registrationEmail, setRegistrationEmail] = useState(userEmail)
+  const [registrationContact, setRegistrationContact] = useState(userContact)
+  const [registrationFieldErrors, setRegistrationFieldErrors] =
+    useState<RegistrationFieldErrors>({})
+  const [activePaymentMethod, setActivePaymentMethod] =
+    useState<PaymentMethod>("transfer")
+  const [registrationError, setRegistrationError] = useState("")
+  const [registrationSubmitting, setRegistrationSubmitting] = useState(false)
+  const [paymentError, setPaymentError] = useState("")
+  const [paymentSubmitting, setPaymentSubmitting] = useState(false)
+  const [registeringAnotherPerson, setRegisteringAnotherPerson] =
+    useState(false)
+
+  useEffect(() => {
+    setRegistrationName(item?.registration?.name || userName)
+    setRegistrationEmail(item?.registration?.email || userEmail)
+    setRegistrationContact(item?.registration?.contact || userContact)
+    setRegistrationFieldErrors({})
+    setActivePaymentMethod(
+      item?.registration?.paymentMethod || item?.paymentMethod || "transfer"
+    )
+    setRegistrationError("")
+    setPaymentError("")
+    setRegisteringAnotherPerson(false)
+  }, [
+    item?.id,
+    item?.paymentMethod,
+    item?.registration?.contact,
+    item?.registration?.email,
+    item?.registration?.name,
+    item?.registration?.paymentMethod,
+    userContact,
+    userEmail,
+    userName,
+  ])
+
+  if (!item) return null
+
+  const badgeLabel = item.type === "event" ? "Evento" : "Anuncio"
+  const isRegistered = item.type === "event" && Boolean(item.registration)
+  const paymentIsPending =
+    item.registration?.paymentStatus === "pending" ||
+    item.registration?.paymentPending === true
+  const paymentIsPaid = item.registration?.paymentStatus === "paid"
+  const shouldDisableOwnRegistration =
+    isRegistered && !registeringAnotherPerson
+
+  async function submitEventRegistration(markAsPaid: boolean) {
+    if (!item || item.type !== "event") return
+
+    const endpointLabel = markAsPaid ? "pago" : "registro"
+    const setSubmitting = markAsPaid
+      ? setPaymentSubmitting
+      : setRegistrationSubmitting
+    const setError = markAsPaid ? setPaymentError : setRegistrationError
+    const trimmedName = registrationName.trim()
+    const trimmedEmail = registrationEmail.trim().toLowerCase()
+    const trimmedContact = registrationContact.trim()
+    const nextFieldErrors: RegistrationFieldErrors = {}
+
+    if (!trimmedName) {
+      nextFieldErrors.name = "El nombre es obligatorio."
+    }
+
+    if (!trimmedEmail) {
+      nextFieldErrors.email = "El correo es obligatorio."
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      nextFieldErrors.email = "Ingresa un correo válido."
+    }
+
+    if (!markAsPaid && !trimmedContact) {
+      nextFieldErrors.contact = "El contacto es obligatorio."
+    }
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setRegistrationFieldErrors(nextFieldErrors)
+      return
+    }
+
+    setSubmitting(true)
+    setError("")
+    setRegistrationFieldErrors({})
+
+    try {
+      const res = await fetch("/api/event-registrations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          eventId: item.id,
+          name: trimmedName,
+          email: trimmedEmail,
+          contact: trimmedContact,
+          paymentMethod: activePaymentMethod,
+          markAsPaid,
+        }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data?.message || `No se pudo guardar el ${endpointLabel}.`)
+        return
+      }
+
+      const successMessage =
+        data?.message || (markAsPaid ? "Pago registrado" : "Registro guardado")
+
+      onActionSuccess({
+        tone: data?.paymentStatus === "pending" ? "warning" : "success",
+        text: successMessage,
+      })
+      await onRegistrationsRefresh()
+      onOpenChange(false)
+    } catch {
+      setError(`No se pudo guardar el ${endpointLabel}.`)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  function clearRegistrationFieldError(field: RegistrationField) {
+    setRegistrationFieldErrors((currentErrors) => {
+      if (!currentErrors[field]) return currentErrors
+
+      const nextErrors = { ...currentErrors }
+      delete nextErrors[field]
+
+      return nextErrors
+    })
+    setRegistrationError("")
+    setPaymentError("")
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="relative sm:max-w-lg">
+        <SubmittingOverlay
+          show={registrationSubmitting || paymentSubmitting}
+          label={paymentSubmitting ? "Procesando pago..." : "Registrando..."}
+        />
+        <DialogHeader>
+          <div className="mb-2">
+            <Badge variant="outline">{badgeLabel}</Badge>
+          </div>
+          <DialogTitle className="text-2xl leading-tight">
+            {item.title}
+          </DialogTitle>
+          <DialogDescription>
+            {item.type === "event"
+              ? "Información completa del evento."
+              : "Información completa del anuncio."}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div
+          className="space-y-4 text-sm"
+          aria-busy={registrationSubmitting || paymentSubmitting}
+        >
+          <p className="whitespace-pre-wrap leading-6 text-foreground">
+            {item.description}
+          </p>
+
+          <div className="grid gap-3 rounded-lg border bg-muted/30 p-3">
+            <InfoRow label="Fecha" value={item.dateLabel} />
+            {item.timeLabel ? (
+              <InfoRow label="Hora" value={item.timeLabel} />
+            ) : null}
+            {item.location ? (
+              <InfoRow label="Ubicación" value={item.location} />
+            ) : null}
+            {item.createdBy ? (
+              <InfoRow
+                label={item.type === "event" ? "Organiza" : "Creado por"}
+                value={item.createdBy}
+              />
+            ) : null}
+          </div>
+
+          {item.type === "event" && isRegistered ? (
+            <div
+              className={
+                paymentIsPending
+                  ? "grid gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-950"
+                  : "grid gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-emerald-950"
+              }
+            >
+              <p className="font-medium">Ya estás registrado al evento.</p>
+              {paymentIsPending ? (
+                <p>Pago pendiente.</p>
+              ) : paymentIsPaid ? (
+                <p>Pago completado.</p>
+              ) : (
+                <p>Registro confirmado.</p>
+              )}
+              {item.registeredCount && item.registeredCount > 1 ? (
+                <p className="text-xs">
+                  Has enviado {item.registeredCount} registros para este evento.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
+          {item.registry ? (
+            <div className="grid gap-3 rounded-lg border bg-muted/30 p-3">
+              <p className="font-medium">Registro</p>
+              <InfoRow label="Nombre" value={item.registry.name || "-"} />
+              <InfoRow label="Correo" value={item.registry.email || "-"} />
+            </div>
+          ) : null}
+
+          {item.type === "event" && item.requiresRegistration ? (
+            <div className="grid gap-3 rounded-lg border bg-muted/30 p-3">
+              <p className="font-medium">Registro</p>
+              <div className="grid gap-3">
+                <div className="grid gap-1.5">
+                  <label className="text-muted-foreground" htmlFor="event-registration-name">
+                    Nombre
+                  </label>
+                  <Input
+                    id="event-registration-name"
+                    value={registrationName}
+                    onChange={(event) => {
+                      setRegistrationName(event.target.value)
+                      clearRegistrationFieldError("name")
+                    }}
+                    aria-invalid={Boolean(registrationFieldErrors.name)}
+                    placeholder="Nombre completo"
+                    disabled={
+                      registrationSubmitting ||
+                      paymentSubmitting ||
+                      shouldDisableOwnRegistration
+                    }
+                  />
+                  <FieldError>{registrationFieldErrors.name}</FieldError>
+                </div>
+                <div className="grid gap-1.5">
+                  <label className="text-muted-foreground" htmlFor="event-registration-email">
+                    Correo
+                  </label>
+                  <Input
+                    id="event-registration-email"
+                    type="email"
+                    value={registrationEmail}
+                    onChange={(event) => {
+                      setRegistrationEmail(event.target.value)
+                      clearRegistrationFieldError("email")
+                    }}
+                    aria-invalid={Boolean(registrationFieldErrors.email)}
+                    placeholder="correo@ejemplo.com"
+                    disabled={
+                      registrationSubmitting ||
+                      paymentSubmitting ||
+                      shouldDisableOwnRegistration
+                    }
+                  />
+                  <FieldError>{registrationFieldErrors.email}</FieldError>
+                </div>
+                <div className="grid gap-1.5">
+                  <label className="text-muted-foreground" htmlFor="event-registration-contact">
+                    Contacto
+                  </label>
+                  <Input
+                    id="event-registration-contact"
+                    value={registrationContact}
+                    onChange={(event) => {
+                      setRegistrationContact(event.target.value)
+                      clearRegistrationFieldError("contact")
+                    }}
+                    aria-invalid={Boolean(registrationFieldErrors.contact)}
+                    placeholder="Teléfono o WhatsApp"
+                    disabled={
+                      registrationSubmitting ||
+                      paymentSubmitting ||
+                      shouldDisableOwnRegistration
+                    }
+                  />
+                  <FieldError>{registrationFieldErrors.contact}</FieldError>
+                </div>
+                {registrationError ? (
+                  <p className="text-sm text-destructive">{registrationError}</p>
+                ) : null}
+                <Button
+                  type="button"
+                  onClick={() => submitEventRegistration(false)}
+                  disabled={
+                    registrationSubmitting ||
+                    paymentSubmitting ||
+                    shouldDisableOwnRegistration
+                  }
+                >
+                  {registrationSubmitting ? (
+                    <>
+                      <LoadingSpinner />
+                      Registrando...
+                    </>
+                  ) : (
+                    "Registrar asistencia"
+                  )}
+                </Button>
+                {isRegistered && !registeringAnotherPerson ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setRegisteringAnotherPerson(true)
+                      setRegistrationName("")
+                      setRegistrationEmail("")
+                      setRegistrationContact("")
+                      setRegistrationFieldErrors({})
+                      setRegistrationError("")
+                    }}
+                    disabled={registrationSubmitting || paymentSubmitting}
+                  >
+                    Registrar a otra persona
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          ) : null}
+
+          {item.type === "event" && item.isPaidEvent ? (
+            <div className="grid gap-3 rounded-lg border bg-muted/30 p-3">
+              <p className="font-medium">Pago del evento</p>
+              <InfoRow label="Monto" value={formatMoney(item.paymentAmount)} />
+
+              <Tabs
+                value={activePaymentMethod}
+                onValueChange={(value) =>
+                  setActivePaymentMethod(value as PaymentMethod)
+                }
+                className="gap-3"
+              >
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="transfer">Transferencia</TabsTrigger>
+                  <TabsTrigger value="card">Tarjeta</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="transfer">
+                  <div className="grid gap-3 rounded-lg border bg-background p-3">
+                    <InfoRow label="Concepto" value={item.title} />
+                    <InfoRow label="Banco" value="Por confirmar con administración" />
+                    <InfoRow label="Titular" value="Por confirmar con administración" />
+                    <InfoRow label="CLABE/Cuenta" value="Por confirmar con administración" />
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="card">
+                  <div className="grid gap-3 rounded-lg border bg-background p-3">
+                    <div className="grid gap-1.5">
+                      <label className="text-muted-foreground" htmlFor="event-card-name">
+                        Nombre en la tarjeta
+                      </label>
+                      <Input id="event-card-name" placeholder="Nombre completo" />
+                    </div>
+                    <div className="grid gap-1.5">
+                      <label className="text-muted-foreground" htmlFor="event-card-number">
+                        Número de tarjeta
+                      </label>
+                      <Input
+                        id="event-card-number"
+                        inputMode="numeric"
+                        placeholder="0000 0000 0000 0000"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      <div className="grid gap-1.5">
+                        <label className="text-muted-foreground" htmlFor="event-card-expiry">
+                          Fecha de vencimiento
+                        </label>
+                        <Input id="event-card-expiry" placeholder="MM/AA" />
+                      </div>
+                      <div className="grid gap-1.5">
+                        <label className="text-muted-foreground" htmlFor="event-card-cvv">
+                          CVV
+                        </label>
+                        <Input
+                          id="event-card-cvv"
+                          inputMode="numeric"
+                          placeholder="123"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+              </Tabs>
+
+              {paymentError ? (
+                <p className="text-sm text-destructive">{paymentError}</p>
+              ) : null}
+              <Button
+                type="button"
+                onClick={() => submitEventRegistration(true)}
+                disabled={
+                  paymentSubmitting ||
+                  registrationSubmitting ||
+                  paymentIsPaid
+                }
+              >
+                {paymentSubmitting ? (
+                  <>
+                    <LoadingSpinner />
+                    Procesando...
+                  </>
+                ) : paymentIsPaid ? (
+                  "Pago completado"
+                ) : (
+                  "Pagar"
+                )}
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="grid gap-1 sm:grid-cols-[120px_1fr]">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="font-medium">{value}</span>
     </div>
   )
 }

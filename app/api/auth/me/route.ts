@@ -1,10 +1,21 @@
 import { NextResponse } from "next/server"
 import { ObjectId } from "mongodb"
 import { getTenantFromRequest, getTenantDbByName } from "@/lib/tenant"
-import clientPromise from "@/lib/mongodb"
+import { readSignedSession, sessionUserToResponse } from "@/lib/session"
 
 export async function GET(req: Request) {
   try {
+    const signedSession = readSignedSession(req)
+
+    if (signedSession) {
+      return NextResponse.json({
+        user: sessionUserToResponse(signedSession),
+        church: {
+          churchName: signedSession.churchName,
+        },
+      })
+    }
+
     const cookie = req.headers.get("cookie")
 
     if (!cookie) {
@@ -28,25 +39,12 @@ export async function GET(req: Request) {
 
     const tenantDb = await getTenantDbByName(tenantDbName)
 
-    const user = await tenantDb.collection("users").findOne({
-      _id: new ObjectId(session),
-    })
-    const client = await clientPromise
-    const globalDb = client.db("churchesPlanner")
-    const church = await globalDb.collection("churches").findOne(
-      { dbName: tenantDbName },
-      {
-        projection: {
-          churchName: 1,
-          location: 1,
-          generalServiceDay: 1,
-          generalServiceStartTime: 1,
-          serviceFrequency: 1,
-        },
-      }
+    const user = await tenantDb.collection("users").findOne(
+      { _id: new ObjectId(session) },
+      { projection: { password: 0 } }
     )
 
-    return NextResponse.json({ user, church })
+    return NextResponse.json({ user, church: null })
 
   } catch {
     return NextResponse.json({ user: null })

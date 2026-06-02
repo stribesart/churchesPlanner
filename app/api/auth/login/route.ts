@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server"
 import bcrypt from "bcryptjs"
 import { getTenantByEmail, getTenantDbByName, normalizeEmail } from "@/lib/tenant"
+import { buildSessionPayload, setAuthCookies } from "@/lib/session"
 
 export async function POST(req: Request) {
   const { email, password } = await req.json()
@@ -38,16 +39,15 @@ export async function POST(req: Request) {
   }
 
   const response = NextResponse.json({ message: "Login correcto" })
-
-  response.cookies.set("session", user._id.toString(), {
-    httpOnly: true,
-    path: "/",
+  const payload = buildSessionPayload({
+    user,
+    tenant: {
+      dbName: tenant.dbName,
+      churchName: typeof tenant.churchName === "string" ? tenant.churchName : undefined,
+    },
   })
 
-  response.cookies.set("tenant", tenant.dbName, {
-    httpOnly: true,
-    path: "/",
-  })
+  setAuthCookies({ response, payload })
 
   return response
 }

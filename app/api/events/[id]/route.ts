@@ -14,6 +14,13 @@ function parseEventInput(body: Record<string, unknown>) {
     typeof body.location === "string" ? body.location.trim() : ""
   const organizer =
     typeof body.organizer === "string" ? body.organizer.trim() : ""
+  const requiresRegistration = body.requiresRegistration === true
+  const isPaidEvent = body.isPaidEvent === true
+  const paymentAmount = isPaidEvent ? Number(body.paymentAmount) : null
+  const paymentMethod =
+    body.paymentMethod === "card" || body.paymentMethod === "transfer"
+      ? body.paymentMethod
+      : "transfer"
 
   if (!name) return { ok: false as const, message: "El nombre del evento es obligatorio" }
   if (!date) return { ok: false as const, message: "Selecciona la fecha del evento" }
@@ -29,10 +36,25 @@ function parseEventInput(body: Record<string, unknown>) {
   if (!organizer || !ObjectId.isValid(organizer)) {
     return { ok: false as const, message: "Selecciona un organizador válido" }
   }
+  if (isPaidEvent && (!Number.isFinite(paymentAmount) || paymentAmount <= 0)) {
+    return { ok: false as const, message: "Ingresa un monto mayor a 0" }
+  }
 
   return {
     ok: true as const,
-    event: { name, description, date, startTime, endTime, location, organizer },
+    event: {
+      name,
+      description,
+      date,
+      startTime,
+      endTime,
+      location,
+      organizer,
+      requiresRegistration,
+      isPaidEvent,
+      paymentAmount,
+      paymentMethod: isPaidEvent ? paymentMethod : null,
+    },
   }
 }
 

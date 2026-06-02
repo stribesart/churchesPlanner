@@ -30,6 +30,13 @@ function parseEventInput(body: Record<string, unknown>) {
     typeof body.location === "string" ? body.location.trim() : ""
   const organizer =
     typeof body.organizer === "string" ? body.organizer.trim() : ""
+  const requiresRegistration = body.requiresRegistration === true
+  const isPaidEvent = body.isPaidEvent === true
+  const paymentAmount = isPaidEvent ? Number(body.paymentAmount) : null
+  const paymentMethod =
+    body.paymentMethod === "card" || body.paymentMethod === "transfer"
+      ? body.paymentMethod
+      : "transfer"
 
   if (!name) return { ok: false as const, message: "El nombre del evento es obligatorio" }
   if (!date) return { ok: false as const, message: "Selecciona la fecha del evento" }
@@ -45,10 +52,25 @@ function parseEventInput(body: Record<string, unknown>) {
   if (!organizer || !ObjectId.isValid(organizer)) {
     return { ok: false as const, message: "Selecciona un organizador válido" }
   }
+  if (isPaidEvent && (!Number.isFinite(paymentAmount) || paymentAmount <= 0)) {
+    return { ok: false as const, message: "Ingresa un monto mayor a 0" }
+  }
 
   return {
     ok: true as const,
-    event: { name, description, date, startTime, endTime, location, organizer },
+    event: {
+      name,
+      description,
+      date,
+      startTime,
+      endTime,
+      location,
+      organizer,
+      requiresRegistration,
+      isPaidEvent,
+      paymentAmount,
+      paymentMethod: isPaidEvent ? paymentMethod : null,
+    },
   }
 }
 
@@ -102,8 +124,29 @@ export async function GET(req: Request) {
           : "Sin organizador"),
     }
   })
+  const eventIds = events.map((event) => event._id.toString())
+  const registrationsByEvent =
+    eventIds.length > 0
+      ? await db
+          .collection("eventRegistrations")
+          .aggregate<{ _id: string; count: number }>([
+            { $match: { eventId: { $in: eventIds } } },
+            { $group: { _id: "$eventId", count: { $sum: 1 } } },
+          ])
+          .toArray()
+      : []
+  const registrationCountsByEvent = new Map(
+    registrationsByEvent.map((registration) => [
+      registration._id,
+      registration.count,
+    ])
+  )
+  const eventsWithRegistrationCount = eventsWithOrganizerName.map((event) => ({
+    ...event,
+    registrationsCount: registrationCountsByEvent.get(event._id.toString()) || 0,
+  }))
 
-  return NextResponse.json(eventsWithOrganizerName)
+  return NextResponse.json(eventsWithRegistrationCount)
 }
 
 export async function POST(req: Request) {
@@ -145,7 +188,7 @@ export async function POST(req: Request) {
   // Crear anuncio automáticamente
   const newAnnouncement = {
     title: `Nuevo evento: ${parsed.event.name}`,
-    content: `Se ha programado un nuevo evento: ${parsed.event.name}. ${parsed.event.description ? `Descripción: ${parsed.event.description}` : ""} Fecha: ${parsed.event.date} a las ${parsed.event.startTime}. Ubicación: ${parsed.event.location}`,
+    content: `Se ha programado un nuevo evento: ${parsed.event.name}. ${parsed.event.description ? `Descripción: ${parsed.event.description}` : ""} Fecha: ${parsed.event.date} a las ${parsed.event.startTime}. Ubicación: ${parsed.event.location}${parsed.event.requiresRegistration ? ". Requiere registro" : ""}${parsed.event.isPaidEvent ? `. Evento de pago: $${parsed.event.paymentAmount} MXN` : ""}`,
     author: parsed.event.organizer,
     createdAt: new Date(),
   }
