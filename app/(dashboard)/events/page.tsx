@@ -53,6 +53,7 @@ type Event = {
   organizerName?: string
   requiresRegistration?: boolean
   isPaidEvent?: boolean
+  expectedAttendees?: number | null
   paymentAmount?: number | null
   paymentMethod?: "transfer" | "card" | null
   registrationsCount?: number
@@ -276,6 +277,7 @@ export default function EventsPage() {
               <TableHead>Ubicación</TableHead>
               <TableHead>Organizador</TableHead>
               <TableHead>Registro</TableHead>
+              <TableHead>Esperados</TableHead>
               <TableHead>Pago</TableHead>
               <TableHead>Acciones</TableHead>
             </TableRow>
@@ -283,10 +285,10 @@ export default function EventsPage() {
 
           <TableBody>
             {loading ? (
-              <TableSkeletonRows columns={8} rows={6} />
+              <TableSkeletonRows columns={9} rows={6} />
             ) : filteredEvents.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={8} className="text-center text-gray-500">
+                <TableCell colSpan={9} className="text-center text-gray-500">
                   No hay eventos que coincidan con los filtros
                 </TableCell>
               </TableRow>
@@ -299,6 +301,11 @@ export default function EventsPage() {
                   <TableCell>{event.location}</TableCell>
                   <TableCell>{event.organizerName || "Sin organizador"}</TableCell>
                   <TableCell>{event.requiresRegistration ? "Sí" : "No"}</TableCell>
+                  <TableCell>
+                    {typeof event.expectedAttendees === "number"
+                      ? event.expectedAttendees
+                      : "-"}
+                  </TableCell>
                   <TableCell>{event.isPaidEvent ? "Sí" : "No"}</TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">

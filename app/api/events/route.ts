@@ -32,6 +32,12 @@ function parseEventInput(body: Record<string, unknown>) {
     typeof body.organizer === "string" ? body.organizer.trim() : ""
   const requiresRegistration = body.requiresRegistration === true
   const isPaidEvent = body.isPaidEvent === true
+  const expectedAttendees =
+    body.expectedAttendees === null ||
+    body.expectedAttendees === undefined ||
+    body.expectedAttendees === ""
+      ? null
+      : Number(body.expectedAttendees)
   const paymentAmount = isPaidEvent ? Number(body.paymentAmount) : null
   const paymentMethod =
     body.paymentMethod === "card" || body.paymentMethod === "transfer"
@@ -52,6 +58,15 @@ function parseEventInput(body: Record<string, unknown>) {
   if (!organizer || !ObjectId.isValid(organizer)) {
     return { ok: false as const, message: "Selecciona un organizador válido" }
   }
+  if (
+    expectedAttendees !== null &&
+    (!Number.isInteger(expectedAttendees) || expectedAttendees <= 0)
+  ) {
+    return {
+      ok: false as const,
+      message: "Ingresa un número de asistentes esperado mayor a 0",
+    }
+  }
   if (isPaidEvent && (!Number.isFinite(paymentAmount) || paymentAmount <= 0)) {
     return { ok: false as const, message: "Ingresa un monto mayor a 0" }
   }
@@ -68,6 +83,7 @@ function parseEventInput(body: Record<string, unknown>) {
       organizer,
       requiresRegistration,
       isPaidEvent,
+      expectedAttendees,
       paymentAmount,
       paymentMethod: isPaidEvent ? paymentMethod : null,
     },

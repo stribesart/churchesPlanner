@@ -47,6 +47,7 @@ type Event = {
   organizer: string
   requiresRegistration?: boolean
   isPaidEvent?: boolean
+  expectedAttendees?: number | null
   paymentAmount?: number | null
   paymentMethod?: PaymentMethod | null
 }
@@ -58,6 +59,7 @@ type EventField =
   | "endTime"
   | "location"
   | "organizer"
+  | "expectedAttendees"
   | "paymentAmount"
 type EventFieldErrors = Partial<Record<EventField, string>>
 
@@ -99,6 +101,9 @@ export default function EventModal({
     event?.requiresRegistration ?? false
   )
   const [isPaidEvent, setIsPaidEvent] = useState(event?.isPaidEvent ?? false)
+  const [expectedAttendees, setExpectedAttendees] = useState(
+    event?.expectedAttendees ? String(event.expectedAttendees) : ""
+  )
   const [paymentAmount, setPaymentAmount] = useState(
     event?.paymentAmount ? String(event.paymentAmount) : ""
   )
@@ -119,7 +124,9 @@ export default function EventModal({
     const trimmedEndTime = endTime.trim()
     const trimmedLocation = location.trim()
     const trimmedOrganizer = organizer.trim()
+    const trimmedExpectedAttendees = expectedAttendees.trim()
     const trimmedPaymentAmount = paymentAmount.trim()
+    const parsedExpectedAttendees = Number(trimmedExpectedAttendees)
     const parsedPaymentAmount = Number(trimmedPaymentAmount)
     const nextFieldErrors: EventFieldErrors = {}
 
@@ -156,6 +163,15 @@ export default function EventModal({
       nextFieldErrors.organizer = "Selecciona un organizador."
     } else if (!organizers.some((user) => user._id === trimmedOrganizer)) {
       nextFieldErrors.organizer = "Selecciona un organizador válido."
+    }
+
+    if (
+      trimmedExpectedAttendees &&
+      (!Number.isInteger(parsedExpectedAttendees) ||
+        parsedExpectedAttendees <= 0)
+    ) {
+      nextFieldErrors.expectedAttendees =
+        "Ingresa un número entero mayor a 0."
     }
 
     if (
@@ -196,6 +212,9 @@ export default function EventModal({
           organizer: trimmedOrganizer,
           requiresRegistration,
           isPaidEvent,
+          expectedAttendees: trimmedExpectedAttendees
+            ? parsedExpectedAttendees
+            : null,
           paymentAmount: isPaidEvent ? parsedPaymentAmount : null,
           paymentMethod: isPaidEvent ? paymentMethod : null,
         }),
@@ -360,6 +379,24 @@ export default function EventModal({
               </SelectContent>
             </Select>
             <FieldError>{fieldErrors.organizer}</FieldError>
+          </Field>
+
+          <Field>
+            <FieldLabel>Asistentes esperados</FieldLabel>
+            <Input
+              type="number"
+              min="1"
+              step="1"
+              value={expectedAttendees}
+              onChange={(e) => {
+                setExpectedAttendees(e.target.value)
+                clearFieldError("expectedAttendees")
+              }}
+              aria-invalid={Boolean(fieldErrors.expectedAttendees)}
+              disabled={submitting}
+              placeholder="Ej. 120"
+            />
+            <FieldError>{fieldErrors.expectedAttendees}</FieldError>
           </Field>
 
           <div className="grid grid-cols-1 gap-3 rounded-md border p-3 sm:grid-cols-2">

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   CalendarDays,
   Megaphone,
@@ -33,6 +33,7 @@ import { SubmittingOverlay } from "@/components/ui/submitting-overlay"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { OfferingsChart } from "@/components/dashboard/offerings-chart"
+import { EventRegistrationsChart } from "@/components/dashboard/event-registrations-chart"
 import { UsersCreatedChart } from "@/components/dashboard/users-created-chart"
 
 type User = {
@@ -63,6 +64,7 @@ type Event = {
   organizerName?: string
   requiresRegistration?: boolean
   isPaidEvent?: boolean
+  expectedAttendees?: number | null
   paymentAmount?: number | null
   paymentMethod?: PaymentMethod | null
 }
@@ -110,6 +112,7 @@ type DashboardState = {
   announcements: Announcement[]
   offerings: Offering[]
   eventRegistrations: EventRegistration[]
+  adminEventRegistrations: EventRegistration[]
 }
 
 type CommunityItemDetail = {
@@ -127,6 +130,8 @@ type CommunityItemDetail = {
   paymentMethod?: PaymentMethod | null
   registration?: EventRegistration | null
   registeredCount?: number
+  paidRegistrationsCount?: number
+  pendingPaymentRegistrationsCount?: number
   registry?: {
     name?: string
     email?: string
@@ -140,6 +145,14 @@ type CommunityMessage = {
 
 type RegistrationField = "name" | "email" | "contact"
 type RegistrationFieldErrors = Partial<Record<RegistrationField, string>>
+type PendingPaymentField = "quantity"
+type PendingPaymentFieldErrors = Partial<Record<PendingPaymentField, string>>
+type EventParticipationTone = "default" | "warning" | "danger" | "success"
+
+type EventParticipationStatus = {
+  tone: EventParticipationTone
+  label: string
+}
 
 function formatRole(role?: string) {
   if (!role) return "Miembro"
@@ -210,7 +223,8 @@ function formatMoney(amount?: number | null) {
 function getEventDetail(
   event: Event,
   registrations: EventRegistration[],
-  currentUserEmail?: string
+  currentUserEmail?: string,
+  currentUserName?: string
 ): CommunityItemDetail {
   const timeLabel =
     event.startTime && event.endTime
@@ -224,8 +238,25 @@ function getEventDetail(
     eventRegistrations.find(
       (registration) =>
         normalizedCurrentEmail &&
-        registration.email?.trim().toLowerCase() === normalizedCurrentEmail
+        registration.email?.trim().toLowerCase() === normalizedCurrentEmail &&
+        (!currentUserName ||
+          registration.name?.trim().toLowerCase() ===
+            currentUserName.trim().toLowerCase())
     ) || null
+  const currentEmailRegistrations = normalizedCurrentEmail
+    ? eventRegistrations.filter(
+        (registration) =>
+          registration.email?.trim().toLowerCase() === normalizedCurrentEmail
+      )
+    : []
+  const paidRegistrationsCount = currentEmailRegistrations.filter(
+    (registration) => registration.paymentStatus === "paid"
+  ).length
+  const pendingPaymentRegistrationsCount = currentEmailRegistrations.filter(
+    (registration) =>
+      registration.paymentStatus === "pending" ||
+      registration.paymentPending === true
+  ).length
 
   return {
     id: event._id,
@@ -242,6 +273,8 @@ function getEventDetail(
     paymentMethod: event.paymentMethod,
     registration: currentUserRegistration,
     registeredCount: eventRegistrations.length,
+    paidRegistrationsCount,
+    pendingPaymentRegistrationsCount,
   }
 }
 
@@ -259,6 +292,125 @@ function getAnnouncementDetail(announcement: Announcement): CommunityItemDetail 
   }
 }
 
+function getUserRegistrationName(user?: User | null) {
+  return user?.displayName || user?.name || ""
+}
+
+function getCommunityItemWithRegistrations(
+  item: CommunityItemDetail | null,
+  registrations: EventRegistration[],
+  user?: User | null
+) {
+  if (!item || item.type !== "event") return item
+
+  const normalizedCurrentEmail = user?.email?.trim().toLowerCase()
+  const currentUserName = getUserRegistrationName(user)
+  const eventRegistrations = registrations.filter(
+    (registration) => registration.eventId === item.id
+  )
+  const currentUserRegistration =
+    eventRegistrations.find(
+      (registration) =>
+        normalizedCurrentEmail &&
+        registration.email?.trim().toLowerCase() === normalizedCurrentEmail &&
+        (!currentUserName ||
+          registration.name?.trim().toLowerCase() ===
+            currentUserName.trim().toLowerCase())
+    ) || null
+  const currentEmailRegistrations = normalizedCurrentEmail
+    ? eventRegistrations.filter(
+        (registration) =>
+          registration.email?.trim().toLowerCase() === normalizedCurrentEmail
+      )
+    : []
+  const paidRegistrationsCount = currentEmailRegistrations.filter(
+    (registration) => registration.paymentStatus === "paid"
+  ).length
+  const pendingPaymentRegistrationsCount = currentEmailRegistrations.filter(
+    (registration) =>
+      registration.paymentStatus === "pending" ||
+      registration.paymentPending === true
+  ).length
+
+  return {
+    ...item,
+    registration: currentUserRegistration,
+    registeredCount: eventRegistrations.length,
+    paidRegistrationsCount,
+    pendingPaymentRegistrationsCount,
+  }
+}
+
+function getEventParticipationStatus(
+  event: Event,
+  registrations: EventRegistration[],
+  user?: User | null
+): EventParticipationStatus {
+  if (!event.requiresRegistration && !event.isPaidEvent) {
+    return { tone: "default", label: "Informativo" }
+  }
+
+  const userName = getUserRegistrationName(user)
+  const normalizedEmail = user?.email?.trim().toLowerCase()
+  const eventRegistrations = registrations.filter(
+    (registration) =>
+      registration.eventId === event._id &&
+      normalizedEmail &&
+      registration.email?.trim().toLowerCase() === normalizedEmail
+  )
+  const ownRegistration = eventRegistrations.find(
+    (registration) =>
+      !userName ||
+      registration.name?.trim().toLowerCase() === userName.trim().toLowerCase()
+  )
+  const hasPendingPayment = eventRegistrations.some(
+    (registration) =>
+      registration.paymentStatus === "pending" ||
+      registration.paymentPending === true
+  )
+  const hasPaidRegistration = eventRegistrations.some(
+    (registration) => registration.paymentStatus === "paid"
+  )
+
+  if (event.isPaidEvent) {
+    if (!ownRegistration && eventRegistrations.length === 0) {
+      return { tone: "warning", label: "Registro y pago pendiente" }
+    }
+
+    if (hasPendingPayment) {
+      return { tone: "danger", label: "Pago pendiente" }
+    }
+
+    if (hasPaidRegistration || ownRegistration?.paymentStatus === "paid") {
+      return { tone: "success", label: "Pagado" }
+    }
+
+    return { tone: "warning", label: "Pago pendiente" }
+  }
+
+  if (!ownRegistration) {
+    return { tone: "warning", label: "Registro pendiente" }
+  }
+
+  return { tone: "success", label: "Registrado" }
+}
+
+function getEventParticipationClasses(tone: EventParticipationTone) {
+  if (tone === "warning") {
+    return "border-amber-200 bg-amber-50 hover:bg-amber-100/70"
+  }
+
+  if (tone === "danger") {
+    return "border-destructive/30 bg-destructive/10 hover:bg-destructive/15"
+  }
+
+  if (tone === "success") {
+    return "border-emerald-200 bg-emerald-50 hover:bg-emerald-100/70"
+  }
+
+  return "border bg-background hover:bg-muted/50"
+}
+
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardState>({
     user: null,
@@ -268,6 +420,7 @@ export default function DashboardPage() {
     announcements: [],
     offerings: [],
     eventRegistrations: [],
+    adminEventRegistrations: [],
   })
   const [loading, setLoading] = useState(true)
   const [dashboardTab, setDashboardTab] = useState("administration")
@@ -301,6 +454,11 @@ export default function DashboardPage() {
             )
           : { registrations: [] }
         const canFetchOfferings = isAdminDashboardRole(meData?.user?.role)
+        const adminEventRegistrationsData = canFetchOfferings
+          ? await fetch("/api/event-registrations?scope=all").then((res) =>
+              res.ok ? res.json() : { registrations: [] }
+            )
+          : { registrations: [] }
         const offeringsData = canFetchOfferings
           ? await fetch("/api/offerings").then((res) =>
               res.ok ? res.json() : { offerings: [] }
@@ -324,6 +482,11 @@ export default function DashboardPage() {
             : [],
           eventRegistrations: Array.isArray(eventRegistrationsData.registrations)
             ? eventRegistrationsData.registrations
+            : [],
+          adminEventRegistrations: Array.isArray(
+            adminEventRegistrationsData.registrations
+          )
+            ? adminEventRegistrationsData.registrations
             : [],
         })
       } catch (error) {
@@ -380,15 +543,35 @@ export default function DashboardPage() {
       : "community"
 
   async function refreshEventRegistrations() {
-    const res = await fetch("/api/event-registrations")
-    const data = res.ok ? await res.json() : { registrations: [] }
+    const [res, adminRes] = await Promise.all([
+      fetch("/api/event-registrations"),
+      canSeeAnalytics
+        ? fetch("/api/event-registrations?scope=all")
+        : Promise.resolve(null),
+    ])
+    const responseData = res.ok ? await res.json() : { registrations: [] }
+    const adminResponseData = adminRes?.ok
+      ? await adminRes.json()
+      : { registrations: [] }
+    const registrations = Array.isArray(responseData.registrations)
+      ? responseData.registrations
+      : []
+    const adminRegistrations = Array.isArray(adminResponseData.registrations)
+      ? adminResponseData.registrations
+      : []
 
     setData((currentData) => ({
       ...currentData,
-      eventRegistrations: Array.isArray(data.registrations)
-        ? data.registrations
-        : [],
+      eventRegistrations: registrations,
+      adminEventRegistrations: canSeeAnalytics
+        ? adminRegistrations
+        : currentData.adminEventRegistrations,
     }))
+    setSelectedCommunityItem((currentItem) =>
+      getCommunityItemWithRegistrations(currentItem, registrations, data.user)
+    )
+
+    return registrations
   }
 
   if (loading) {
@@ -539,6 +722,7 @@ export default function DashboardPage() {
               <TabsList className="w-full sm:w-fit">
                 <TabsTrigger value="users">Usuarios</TabsTrigger>
                 <TabsTrigger value="offerings">Ofrendas</TabsTrigger>
+                <TabsTrigger value="registrations">Registros</TabsTrigger>
               </TabsList>
               <TabsContent value="users">
                 {activeDashboardTab === "administration" &&
@@ -550,6 +734,16 @@ export default function DashboardPage() {
                 {activeDashboardTab === "administration" &&
                 analyticsTab === "offerings" ? (
                   <OfferingsChart offerings={data.offerings} />
+                ) : null}
+              </TabsContent>
+              <TabsContent value="registrations">
+                {activeDashboardTab === "administration" &&
+                analyticsTab === "registrations" ? (
+                  <EventRegistrationsChart
+                    events={data.events}
+                    registrations={data.adminEventRegistrations}
+                    usersCount={data.users.length}
+                  />
                 ) : null}
               </TabsContent>
             </Tabs>
@@ -586,40 +780,56 @@ export default function DashboardPage() {
                     No hay eventos próximos registrados.
                   </p>
                 ) : (
-                  nextEvents.map((event) => (
-                    <button
-                      key={event._id}
-                      type="button"
-                      onClick={() =>
-                        setSelectedCommunityItem(
-                          getEventDetail(
-                            event,
-                            data.eventRegistrations,
-                            data.user?.email
+                  nextEvents.map((event) => {
+                    const participationStatus = getEventParticipationStatus(
+                      event,
+                      data.eventRegistrations,
+                      data.user
+                    )
+
+                    return (
+                      <button
+                        key={event._id}
+                        type="button"
+                        onClick={() =>
+                          setSelectedCommunityItem(
+                            getEventDetail(
+                              event,
+                              data.eventRegistrations,
+                              data.user?.email,
+                              userName
+                            )
                           )
-                        )
-                      }
-                      className="w-full rounded-lg border bg-background px-3 py-3 text-left transition hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-                    >
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="min-w-0">
-                          <p className="truncate font-medium">
-                            {event.name || "Evento"}
-                          </p>
-                          <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
-                            {event.description || "Sin descripción"}
-                          </p>
+                        }
+                        className={`w-full rounded-lg px-3 py-3 text-left transition focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50 ${getEventParticipationClasses(participationStatus.tone)}`}
+                      >
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <p className="truncate font-medium">
+                              {event.name || "Evento"}
+                            </p>
+                            <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                              {event.description || "Sin descripción"}
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2 sm:justify-end">
+                            {participationStatus.tone !== "default" ? (
+                              <Badge variant="outline" className="w-fit">
+                                {participationStatus.label}
+                              </Badge>
+                            ) : null}
+                            <Badge variant="outline" className="w-fit">
+                              {formatDate(event.date)}
+                            </Badge>
+                          </div>
                         </div>
-                        <Badge variant="outline" className="w-fit">
-                          {formatDate(event.date)}
-                        </Badge>
-                      </div>
-                      <p className="mt-2 text-xs text-muted-foreground">
-                        {event.startTime ? `${event.startTime}` : "Hora por definir"}
-                        {event.location ? ` · ${event.location}` : ""}
-                      </p>
-                    </button>
-                  ))
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {event.startTime ? `${event.startTime}` : "Hora por definir"}
+                          {event.location ? ` · ${event.location}` : ""}
+                        </p>
+                      </button>
+                    )
+                  })
                 )}
               </CardContent>
             </Card>
@@ -705,7 +915,7 @@ function CommunityItemModal({
   item: CommunityItemDetail | null
   currentUser: User | null
   onActionSuccess: (message: CommunityMessage) => void
-  onRegistrationsRefresh: () => Promise<void>
+  onRegistrationsRefresh: () => Promise<EventRegistration[]>
   open: boolean
   onOpenChange: (open: boolean) => void
 }) {
@@ -724,8 +934,14 @@ function CommunityItemModal({
   const [registrationSubmitting, setRegistrationSubmitting] = useState(false)
   const [paymentError, setPaymentError] = useState("")
   const [paymentSubmitting, setPaymentSubmitting] = useState(false)
+  const [pendingPaymentQuantity, setPendingPaymentQuantity] = useState("1")
+  const [pendingPaymentFieldErrors, setPendingPaymentFieldErrors] =
+    useState<PendingPaymentFieldErrors>({})
+  const [pendingPaymentSubmitting, setPendingPaymentSubmitting] =
+    useState(false)
   const [registeringAnotherPerson, setRegisteringAnotherPerson] =
     useState(false)
+  const contentScrollRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setRegistrationName(item?.registration?.name || userName)
@@ -737,6 +953,8 @@ function CommunityItemModal({
     )
     setRegistrationError("")
     setPaymentError("")
+    setPendingPaymentQuantity("1")
+    setPendingPaymentFieldErrors({})
     setRegisteringAnotherPerson(false)
   }, [
     item?.id,
@@ -750,16 +968,35 @@ function CommunityItemModal({
     userName,
   ])
 
+  useEffect(() => {
+    if (!open) return
+
+    requestAnimationFrame(() => {
+      contentScrollRef.current?.scrollTo({ top: 0 })
+    })
+  }, [item?.id, open])
+
   if (!item) return null
 
-  const badgeLabel = item.type === "event" ? "Evento" : "Anuncio"
   const isRegistered = item.type === "event" && Boolean(item.registration)
-  const paymentIsPending =
-    item.registration?.paymentStatus === "pending" ||
-    item.registration?.paymentPending === true
   const paymentIsPaid = item.registration?.paymentStatus === "paid"
+  const paymentActionIsPaid = paymentIsPaid && !registeringAnotherPerson
+  const pendingPaymentCount = item.pendingPaymentRegistrationsCount || 0
+  const paidPaymentCount = item.paidRegistrationsCount || 0
+  const parsedPendingPaymentQuantity = Number(pendingPaymentQuantity)
+  const pendingPaymentTotal =
+    item.paymentAmount && Number.isFinite(item.paymentAmount)
+      ? item.paymentAmount * (Number.isFinite(parsedPendingPaymentQuantity)
+        ? parsedPendingPaymentQuantity
+        : 0)
+      : 0
   const shouldDisableOwnRegistration =
     isRegistered && !registeringAnotherPerson
+  const showRegisterAnotherAction =
+    item.type === "event" &&
+    item.requiresRegistration &&
+    isRegistered &&
+    !registeringAnotherPerson
 
   async function submitEventRegistration(markAsPaid: boolean) {
     if (!item || item.type !== "event") return
@@ -784,7 +1021,7 @@ function CommunityItemModal({
       nextFieldErrors.email = "Ingresa un correo válido."
     }
 
-    if (!markAsPaid && !trimmedContact) {
+    if (item.requiresRegistration && !trimmedContact) {
       nextFieldErrors.contact = "El contacto es obligatorio."
     }
 
@@ -822,16 +1059,75 @@ function CommunityItemModal({
       const successMessage =
         data?.message || (markAsPaid ? "Pago registrado" : "Registro guardado")
 
-      onActionSuccess({
-        tone: data?.paymentStatus === "pending" ? "warning" : "success",
-        text: successMessage,
-      })
+      if (data?.paymentStatus === "pending" || !markAsPaid) {
+        onActionSuccess({
+          tone: data?.paymentStatus === "pending" ? "warning" : "success",
+          text: successMessage,
+        })
+      } else {
+        onActionSuccess(null)
+      }
       await onRegistrationsRefresh()
-      onOpenChange(false)
+      if (!markAsPaid) {
+        onOpenChange(false)
+      }
     } catch {
       setError(`No se pudo guardar el ${endpointLabel}.`)
     } finally {
       setSubmitting(false)
+    }
+  }
+
+  async function submitPendingPayments() {
+    if (!item || item.type !== "event") return
+
+    const quantity = Number(pendingPaymentQuantity)
+    const nextFieldErrors: PendingPaymentFieldErrors = {}
+
+    if (
+      !Number.isInteger(quantity) ||
+      quantity <= 0 ||
+      quantity > pendingPaymentCount
+    ) {
+      nextFieldErrors.quantity =
+        "Selecciona una cantidad válida de personas pendientes."
+    }
+
+    if (Object.keys(nextFieldErrors).length > 0) {
+      setPendingPaymentFieldErrors(nextFieldErrors)
+      return
+    }
+
+    setPendingPaymentSubmitting(true)
+    setPendingPaymentFieldErrors({})
+    setPaymentError("")
+
+    try {
+      const res = await fetch("/api/event-registrations", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          eventId: item.id,
+          quantity,
+          paymentMethod: activePaymentMethod,
+        }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setPaymentError(data?.message || "No se pudo registrar el pago.")
+        return
+      }
+
+      onActionSuccess(null)
+      await onRegistrationsRefresh()
+      setPendingPaymentQuantity("1")
+    } catch {
+      setPaymentError("No se pudo registrar el pago.")
+    } finally {
+      setPendingPaymentSubmitting(false)
     }
   }
 
@@ -848,17 +1144,39 @@ function CommunityItemModal({
     setPaymentError("")
   }
 
+  function clearPendingPaymentFieldError(field: PendingPaymentField) {
+    setPendingPaymentFieldErrors((currentErrors) => {
+      if (!currentErrors[field]) return currentErrors
+
+      const nextErrors = { ...currentErrors }
+      delete nextErrors[field]
+
+      return nextErrors
+    })
+    setPaymentError("")
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="relative sm:max-w-lg">
+      <DialogContent className="relative gap-0 overflow-hidden sm:max-w-lg">
         <SubmittingOverlay
-          show={registrationSubmitting || paymentSubmitting}
-          label={paymentSubmitting ? "Procesando pago..." : "Registrando..."}
+          show={
+            registrationSubmitting ||
+            paymentSubmitting ||
+            pendingPaymentSubmitting
+          }
+          label={
+            paymentSubmitting || pendingPaymentSubmitting
+              ? "Procesando pago..."
+              : "Registrando..."
+          }
         />
-        <DialogHeader>
-          <div className="mb-2">
-            <Badge variant="outline">{badgeLabel}</Badge>
-          </div>
+        <button
+          type="button"
+          className="sr-only"
+          aria-label="Inicio del modal"
+        />
+        <DialogHeader className="pb-4 pr-8">
           <DialogTitle className="text-2xl leading-tight">
             {item.title}
           </DialogTitle>
@@ -870,8 +1188,13 @@ function CommunityItemModal({
         </DialogHeader>
 
         <div
-          className="space-y-4 text-sm"
-          aria-busy={registrationSubmitting || paymentSubmitting}
+          ref={contentScrollRef}
+          className="-mx-4 max-h-[60vh] space-y-4 overflow-y-auto px-4 py-1 text-sm"
+          aria-busy={
+            registrationSubmitting ||
+            paymentSubmitting ||
+            pendingPaymentSubmitting
+          }
         >
           <p className="whitespace-pre-wrap leading-6 text-foreground">
             {item.description}
@@ -896,16 +1219,22 @@ function CommunityItemModal({
           {item.type === "event" && isRegistered ? (
             <div
               className={
-                paymentIsPending
+                pendingPaymentCount > 0
                   ? "grid gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-950"
                   : "grid gap-2 rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-emerald-950"
               }
             >
               <p className="font-medium">Ya estás registrado al evento.</p>
-              {paymentIsPending ? (
-                <p>Pago pendiente.</p>
-              ) : paymentIsPaid ? (
-                <p>Pago completado.</p>
+              {pendingPaymentCount > 0 ? (
+                <p>
+                  Pago de {pendingPaymentCount}{" "}
+                  {pendingPaymentCount === 1 ? "persona" : "personas"} pendiente.
+                </p>
+              ) : paidPaymentCount > 0 ? (
+                <p>
+                  Pago de {paidPaymentCount}{" "}
+                  {paidPaymentCount === 1 ? "persona" : "personas"} completado.
+                </p>
               ) : (
                 <p>Registro confirmado.</p>
               )}
@@ -945,6 +1274,7 @@ function CommunityItemModal({
                     disabled={
                       registrationSubmitting ||
                       paymentSubmitting ||
+                      pendingPaymentSubmitting ||
                       shouldDisableOwnRegistration
                     }
                   />
@@ -958,17 +1288,9 @@ function CommunityItemModal({
                     id="event-registration-email"
                     type="email"
                     value={registrationEmail}
-                    onChange={(event) => {
-                      setRegistrationEmail(event.target.value)
-                      clearRegistrationFieldError("email")
-                    }}
                     aria-invalid={Boolean(registrationFieldErrors.email)}
                     placeholder="correo@ejemplo.com"
-                    disabled={
-                      registrationSubmitting ||
-                      paymentSubmitting ||
-                      shouldDisableOwnRegistration
-                    }
+                    disabled
                   />
                   <FieldError>{registrationFieldErrors.email}</FieldError>
                 </div>
@@ -988,6 +1310,7 @@ function CommunityItemModal({
                     disabled={
                       registrationSubmitting ||
                       paymentSubmitting ||
+                      pendingPaymentSubmitting ||
                       shouldDisableOwnRegistration
                     }
                   />
@@ -1002,6 +1325,7 @@ function CommunityItemModal({
                   disabled={
                     registrationSubmitting ||
                     paymentSubmitting ||
+                    pendingPaymentSubmitting ||
                     shouldDisableOwnRegistration
                   }
                 >
@@ -1014,19 +1338,23 @@ function CommunityItemModal({
                     "Registrar asistencia"
                   )}
                 </Button>
-                {isRegistered && !registeringAnotherPerson ? (
+                {showRegisterAnotherAction ? (
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => {
                       setRegisteringAnotherPerson(true)
                       setRegistrationName("")
-                      setRegistrationEmail("")
+                      setRegistrationEmail(userEmail)
                       setRegistrationContact("")
                       setRegistrationFieldErrors({})
                       setRegistrationError("")
                     }}
-                    disabled={registrationSubmitting || paymentSubmitting}
+                    disabled={
+                      registrationSubmitting ||
+                      paymentSubmitting ||
+                      pendingPaymentSubmitting
+                    }
                   >
                     Registrar a otra persona
                   </Button>
@@ -1039,6 +1367,86 @@ function CommunityItemModal({
             <div className="grid gap-3 rounded-lg border bg-muted/30 p-3">
               <p className="font-medium">Pago del evento</p>
               <InfoRow label="Monto" value={formatMoney(item.paymentAmount)} />
+              {pendingPaymentCount > 0 && !registeringAnotherPerson ? (
+                <div className="grid gap-3 rounded-lg border bg-background p-3">
+                  <p className="font-medium">Pagos pendientes</p>
+                  <InfoRow
+                    label="Pendientes"
+                    value={`${pendingPaymentCount} ${
+                      pendingPaymentCount === 1 ? "persona" : "personas"
+                    }`}
+                  />
+                  <InfoRow
+                    label="Monto pendiente"
+                    value={formatMoney(
+                      item.paymentAmount
+                        ? item.paymentAmount * pendingPaymentCount
+                        : 0
+                    )}
+                  />
+                  <div className="grid gap-1.5">
+                    <label
+                      className="text-muted-foreground"
+                      htmlFor="event-pending-payment-quantity"
+                    >
+                      ¿De cuántas personas quieres hacer el pago?
+                    </label>
+                    <Input
+                      id="event-pending-payment-quantity"
+                      type="number"
+                      min="1"
+                      max={pendingPaymentCount}
+                      value={pendingPaymentQuantity}
+                      onChange={(event) => {
+                        setPendingPaymentQuantity(event.target.value)
+                        clearPendingPaymentFieldError("quantity")
+                      }}
+                      aria-invalid={Boolean(
+                        pendingPaymentFieldErrors.quantity
+                      )}
+                      disabled={
+                        registrationSubmitting ||
+                        paymentSubmitting ||
+                        pendingPaymentSubmitting
+                      }
+                    />
+                    <FieldError>
+                      {pendingPaymentFieldErrors.quantity}
+                    </FieldError>
+                  </div>
+                  <InfoRow
+                    label="Total a pagar"
+                    value={formatMoney(pendingPaymentTotal)}
+                  />
+                  <Button
+                    type="button"
+                    onClick={submitPendingPayments}
+                    disabled={
+                      registrationSubmitting ||
+                      paymentSubmitting ||
+                      pendingPaymentSubmitting
+                    }
+                  >
+                    {pendingPaymentSubmitting ? (
+                      <>
+                        <LoadingSpinner />
+                        Procesando...
+                      </>
+                    ) : (
+                      "Realizar pago pendiente"
+                    )}
+                  </Button>
+                </div>
+              ) : null}
+              {registeringAnotherPerson ? (
+                <p className="text-sm text-muted-foreground">
+                  Este pago se aplicará al registro de{" "}
+                  <span className="font-medium text-foreground">
+                    {registrationName.trim() || "la persona invitada"}
+                  </span>
+                  .
+                </p>
+              ) : null}
 
               <Tabs
                 value={activePaymentMethod}
@@ -1110,7 +1518,8 @@ function CommunityItemModal({
                 disabled={
                   paymentSubmitting ||
                   registrationSubmitting ||
-                  paymentIsPaid
+                  pendingPaymentSubmitting ||
+                  paymentActionIsPaid
                 }
               >
                 {paymentSubmitting ? (
@@ -1118,7 +1527,7 @@ function CommunityItemModal({
                     <LoadingSpinner />
                     Procesando...
                   </>
-                ) : paymentIsPaid ? (
+                ) : paymentActionIsPaid ? (
                   "Pago completado"
                 ) : (
                   "Pagar"
