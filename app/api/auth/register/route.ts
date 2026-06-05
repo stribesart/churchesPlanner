@@ -3,6 +3,7 @@ import clientPromise from "@/lib/mongodb"
 import bcrypt from "bcryptjs"
 import { randomBytes } from "crypto"
 import { getGlobalEmailOwner, normalizeEmail } from "@/lib/tenant"
+import { isValidPhone, normalizePhone } from "@/lib/verification"
 
 function normalizeDbName(name: string) {
   return name
@@ -75,10 +76,12 @@ export async function POST(req: Request) {
     serviceFrequency,
     adminName,
     adminEmail,
+    adminPhone,
     password,
     age,
   } = await req.json()
   const normalizedAdminEmail = normalizeEmail(adminEmail || "")
+  const normalizedAdminPhone = normalizePhone(adminPhone)
 
   if (
     !churchName ||
@@ -86,11 +89,19 @@ export async function POST(req: Request) {
     !generalServiceStartTime ||
     !adminName ||
     !normalizedAdminEmail ||
+    !normalizedAdminPhone ||
     !password ||
     !age
   ) {
     return NextResponse.json(
       { message: "Todos los campos son obligatorios" },
+      { status: 400 }
+    )
+  }
+
+  if (!isValidPhone(normalizedAdminPhone)) {
+    return NextResponse.json(
+      { message: "Ingresa un celular válido con 10 a 15 dígitos" },
       { status: 400 }
     )
   }
@@ -177,6 +188,9 @@ export async function POST(req: Request) {
     displayName: trimmedAdminName.split(" ")[0] || trimmedAdminName,
     age: ageNumber,
     email: normalizedAdminEmail,
+    phone: normalizedAdminPhone,
+    emailVerified: false,
+    phoneVerified: false,
     password: passwordHash,
     role: adminRole,
     isSuperUser: true,

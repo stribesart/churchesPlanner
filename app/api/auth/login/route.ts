@@ -38,7 +38,10 @@ export async function POST(req: Request) {
     )
   }
 
-  const response = NextResponse.json({ message: "Login correcto" })
+  const response = NextResponse.json({
+    message: "Login correcto",
+    needsVerification: !user.emailVerified && !user.phoneVerified,
+  })
   const payload = buildSessionPayload({
     user,
     tenant: {

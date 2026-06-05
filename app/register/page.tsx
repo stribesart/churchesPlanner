@@ -48,6 +48,7 @@ export default function RegisterPage() {
   const [serviceFrequency, setServiceFrequency] = useState("weekly")
   const [adminName, setAdminName] = useState("")
   const [adminEmail, setAdminEmail] = useState("")
+  const [adminPhone, setAdminPhone] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
@@ -98,6 +99,10 @@ export default function RegisterPage() {
     if (stepToValidate === 2) {
       if (!adminName.trim()) return "El nombre del administrador es obligatorio"
       if (!adminEmail.trim()) return "El correo del administrador es obligatorio"
+      if (!adminPhone.trim()) return "El celular del administrador es obligatorio"
+      if (!/^\+?\d{10,15}$/.test(adminPhone.replace(/[^\d+]/g, ""))) {
+        return "Ingresa un celular válido con 10 a 15 dígitos"
+      }
       if (!password) return "La contraseña es obligatoria"
       if (!isPasswordValid(password)) return "La contraseña debe tener mínimo 8 caracteres, incluir una mayúscula, letras y un número"
       if (!confirmPassword) return "Confirma tu contraseña"
@@ -141,6 +146,7 @@ export default function RegisterPage() {
         serviceFrequency,
         adminName,
         adminEmail,
+        adminPhone,
         password,
         age,
       }),
@@ -309,6 +315,21 @@ export default function RegisterPage() {
                       value={adminEmail}
                       onChange={(e) => setAdminEmail(e.target.value)}
                     />
+                  </Field>
+
+                  <Field>
+                    <FieldLabel>
+                      Celular del administrador
+                    </FieldLabel>
+                    <Input
+                      type="tel"
+                      placeholder="+5215512345678"
+                      value={adminPhone}
+                      onChange={(e) => setAdminPhone(e.target.value)}
+                    />
+                    <FieldDescription>
+                      Se usará para confirmar la cuenta por SMS o WhatsApp.
+                    </FieldDescription>
                   </Field>
 
                   <Field>

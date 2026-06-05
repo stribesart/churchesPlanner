@@ -18,13 +18,12 @@ import {
 } from "@/components/ui/table"
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
+  AlertDialogDescription,
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogFooter,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import {
   Dialog,
@@ -65,7 +64,11 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([])
   const [open, setOpen] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [userToDelete, setUserToDelete] = useState<User | null>(null)
+  const [deleteError, setDeleteError] = useState("")
+  const [deletingUser, setDeletingUser] = useState(false)
   const [currentUserRole, setCurrentUserRole] = useState("")
+  const [currentUserMinistryId, setCurrentUserMinistryId] = useState("")
   const [ministryRoles, setMinistryRoles] = useState<MinistryRole[]>([])
   const [inviteOpen, setInviteOpen] = useState(false)
   const [inviteUrl, setInviteUrl] = useState("")
@@ -74,6 +77,8 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
   const isLeader = isLeaderRole(currentUserRole)
+  const leaderNeedsMinistry = isLeader && !currentUserMinistryId
+  const leaderNeedsMinistryRole = isLeader && ministryRoles.length === 0
 
   const refreshUsersPage = useCallback(async () => {
     const [meRes, usersRes] = await Promise.all([
@@ -82,11 +87,17 @@ export default function UsersPage() {
     ])
 
     let nextCurrentUserRole = currentUserRole
+    let nextCurrentUserMinistryId = currentUserMinistryId
 
     if (meRes.ok) {
       const meData = await meRes.json()
       nextCurrentUserRole = meData.user?.role || ""
+      nextCurrentUserMinistryId =
+        typeof meData.user?.ministryId === "string"
+          ? meData.user.ministryId
+          : ""
       setCurrentUserRole(nextCurrentUserRole)
+      setCurrentUserMinistryId(nextCurrentUserMinistryId)
     }
 
     if (usersRes.ok) {
@@ -94,7 +105,7 @@ export default function UsersPage() {
       setUsers(data)
     }
 
-    if (isLeaderRole(nextCurrentUserRole)) {
+    if (isLeaderRole(nextCurrentUserRole) && nextCurrentUserMinistryId) {
       const rolesRes = await fetch("/api/ministry-roles")
 
       if (rolesRes.ok) {
@@ -104,7 +115,7 @@ export default function UsersPage() {
     } else {
       setMinistryRoles([])
     }
-  }, [currentUserRole])
+  }, [currentUserMinistryId, currentUserRole])
 
   useEffect(() => {
     let ignore = false
@@ -114,20 +125,35 @@ export default function UsersPage() {
         const meData = meRes.ok ? await meRes.json() : null
         const usersData = usersRes.ok ? await usersRes.json() : []
         const nextCurrentUserRole = meData?.user?.role || ""
+        const nextCurrentUserMinistryId =
+          typeof meData?.user?.ministryId === "string"
+            ? meData.user.ministryId
+            : ""
         const rolesRes =
-          isLeaderRole(nextCurrentUserRole)
+          isLeaderRole(nextCurrentUserRole) && nextCurrentUserMinistryId
             ? await fetch("/api/ministry-roles")
             : null
         const rolesData = rolesRes?.ok ? await rolesRes.json() : null
 
-        return { nextCurrentUserRole, usersData, rolesData }
+        return {
+          nextCurrentUserRole,
+          nextCurrentUserMinistryId,
+          usersData,
+          rolesData,
+        }
       })
-      .then(({ nextCurrentUserRole, usersData, rolesData }) => {
+      .then(({
+        nextCurrentUserRole,
+        nextCurrentUserMinistryId,
+        usersData,
+        rolesData,
+      }) => {
         if (ignore) {
           return
         }
 
         setCurrentUserRole(nextCurrentUserRole)
+        setCurrentUserMinistryId(nextCurrentUserMinistryId)
         setUsers(usersData)
         setMinistryRoles(rolesData?.roles || [])
       })
@@ -143,6 +169,8 @@ export default function UsersPage() {
   }, [])
 
   async function handleDelete(id: string) {
+    setDeleteError("")
+    setDeletingUser(true)
     setSubmitting(true)
 
     try {
@@ -153,13 +181,18 @@ export default function UsersPage() {
         },
         body: JSON.stringify({ id }),
       })
+      const data = await res.json()
 
       if (res.ok) {
         await refreshUsersPage()
+        setUserToDelete(null)
       } else {
-        alert("Error al eliminar")
+        setDeleteError(data?.message || "No se pudo eliminar el usuario.")
       }
+    } catch {
+      setDeleteError("No se pudo eliminar el usuario. Intenta de nuevo.")
     } finally {
+      setDeletingUser(false)
       setSubmitting(false)
     }
   }
@@ -194,7 +227,13 @@ export default function UsersPage() {
     <div>
       <SubmittingOverlay
         show={submitting || inviteLoading}
-        label={inviteLoading ? "Generando..." : "Guardando cambios..."}
+        label={
+          inviteLoading
+            ? "Generando..."
+            : deletingUser
+              ? "Eliminando..."
+              : "Guardando cambios..."
+        }
         className="fixed z-[70]"
       />
 
@@ -210,7 +249,13 @@ export default function UsersPage() {
               Crea primero los roles que tus colaboradores podrán desempeñar.
             </p>
           </div>
+          {leaderNeedsMinistry ? (
+            <p className="text-sm font-medium text-muted-foreground">
+              Tienes que decirle al administrador que te asigne a tu ministerio.
+            </p>
+          ) : null}
           <MinistryRolesManager
+            disabled={leaderNeedsMinistry}
             onRolesChange={setMinistryRoles}
             onSubmittingChange={setSubmitting}
           />
@@ -221,7 +266,13 @@ export default function UsersPage() {
         <Button onClick={() => {
           setSelectedUser(null)
           setOpen(true)
-        }} disabled={submitting || inviteLoading}>
+        }} disabled={
+          loading ||
+          submitting ||
+          inviteLoading ||
+          leaderNeedsMinistry ||
+          leaderNeedsMinistryRole
+        }>
           + Nuevo usuario
         </Button>
         <Button
@@ -297,42 +348,17 @@ export default function UsersPage() {
                       </Tooltip>
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                size="icon"
-                                variant="destructive"
-                                disabled={submitting || inviteLoading}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>
-                                  ¿Eliminar usuario?
-                                </AlertDialogTitle>
-                              </AlertDialogHeader>
-
-                              <p className="text-sm text-gray-500">
-                                Esta acción no se puede deshacer.
-                              </p>
-
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>
-                                  Cancelar
-                                </AlertDialogCancel>
-
-                                <AlertDialogAction
-                                  onClick={() => handleDelete(user._id)}
-                                  disabled={submitting || inviteLoading}
-                                >
-                                  Sí, eliminar
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                          <Button
+                            size="icon"
+                            variant="destructive"
+                            onClick={() => {
+                              setUserToDelete(user)
+                              setDeleteError("")
+                            }}
+                            disabled={submitting || inviteLoading}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </TooltipTrigger>
 
                         <TooltipContent>
@@ -358,6 +384,59 @@ export default function UsersPage() {
           onSubmittingChange={setSubmitting}
         />
       </div>
+
+      <AlertDialog
+        open={Boolean(userToDelete)}
+        onOpenChange={(nextOpen) => {
+          if (deletingUser && !nextOpen) return
+
+          if (!nextOpen) {
+            setUserToDelete(null)
+            setDeleteError("")
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar usuario?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {userToDelete
+                ? `Se eliminará a ${userToDelete.name}. Esta acción no se puede deshacer.`
+                : "Esta acción no se puede deshacer."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          {deleteError ? (
+            <p className="text-sm font-medium text-destructive">
+              {deleteError}
+            </p>
+          ) : null}
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingUser}>
+              Cancelar
+            </AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (userToDelete) {
+                  handleDelete(userToDelete._id)
+                }
+              }}
+              disabled={!userToDelete || deletingUser}
+            >
+              {deletingUser ? (
+                <>
+                  <LoadingSpinner />
+                  Eliminando...
+                </>
+              ) : (
+                "Sí, eliminar"
+              )}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog
         open={inviteOpen}

@@ -3,10 +3,20 @@
 import { useEffect, useState } from "react"
 import { Pencil, Plus, Trash2, X } from "lucide-react"
 
+import MinistryRoleModal from "@/components/ministeries/ministry-role-modal"
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { FieldError } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
+import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import {
   Table,
   TableBody,
@@ -21,23 +31,29 @@ type MinistryRole = {
   _id: string
   ministryId: string
   name: string
+  description?: string
 }
 
 type Props = {
   ministryId?: string | null
+  disabled?: boolean
   onRolesChange?: (roles: MinistryRole[]) => void
   onSubmittingChange?: (submitting: boolean) => void
 }
 
 export default function MinistryRolesManager({
   ministryId,
+  disabled = false,
   onRolesChange,
   onSubmittingChange,
 }: Props) {
   const [roles, setRoles] = useState<MinistryRole[]>([])
-  const [name, setName] = useState("")
+  const [roleModalOpen, setRoleModalOpen] = useState(false)
   const [editingRoleId, setEditingRoleId] = useState("")
   const [editingName, setEditingName] = useState("")
+  const [roleToDelete, setRoleToDelete] = useState<MinistryRole | null>(null)
+  const [deleteError, setDeleteError] = useState("")
+  const [deletingRole, setDeletingRole] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
@@ -68,6 +84,14 @@ export default function MinistryRolesManager({
   useEffect(() => {
     let ignore = false
 
+    if (disabled) {
+      setLoading(false)
+      setRoles([])
+      setError("")
+      onRolesChange?.([])
+      return
+    }
+
     fetch(rolesUrl)
       .then((res) => res.json().then((data) => ({ ok: res.ok, data })))
       .then(({ ok, data }) => {
@@ -89,44 +113,7 @@ export default function MinistryRolesManager({
     return () => {
       ignore = true
     }
-  }, [rolesUrl, onRolesChange])
-
-  async function handleCreateRole() {
-    const trimmedName = name.trim()
-
-    if (!trimmedName) {
-      return
-    }
-
-    setError("")
-    setSuccess("")
-
-    onSubmittingChange?.(true)
-
-    try {
-      const res = await fetch("/api/ministry-roles", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name: trimmedName,
-          ministryId,
-        }),
-      })
-
-      if (res.ok) {
-        setName("")
-        setSuccess("Rol creado correctamente.")
-        await fetchRoles()
-      } else {
-        const data = await res.json()
-        setError(data?.message || "Error al crear rol")
-      }
-    } finally {
-      onSubmittingChange?.(false)
-    }
-  }
+  }, [disabled, rolesUrl, onRolesChange])
 
   async function handleUpdateRole(roleId: string) {
     const trimmedEditingName = editingName.trim()
@@ -166,14 +153,10 @@ export default function MinistryRolesManager({
   }
 
   async function handleDeleteRole(roleId: string) {
-    const confirmed = window.confirm("¿Eliminar este rol de ministerio?")
-
-    if (!confirmed) {
-      return
-    }
-
     setError("")
     setSuccess("")
+    setDeleteError("")
+    setDeletingRole(true)
 
     onSubmittingChange?.(true)
 
@@ -183,39 +166,31 @@ export default function MinistryRolesManager({
       })
 
       if (res.ok) {
+        setRoleToDelete(null)
         setSuccess("Rol eliminado correctamente.")
         await fetchRoles()
       } else {
         const data = await res.json()
-        setError(data?.message || "Error al eliminar rol")
+        setDeleteError(data?.message || "No se pudo eliminar el rol.")
       }
+    } catch {
+      setDeleteError("No se pudo eliminar el rol. Intenta de nuevo.")
     } finally {
+      setDeletingRole(false)
       onSubmittingChange?.(false)
     }
   }
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-2">
-        <Label htmlFor="ministry-role-name">Nuevo rol de ministerio</Label>
-        <div className="flex gap-2">
-          <Input
-            id="ministry-role-name"
-            placeholder="Maestra titular"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-          />
-          <Button
-            type="button"
-            size="icon"
-            onClick={handleCreateRole}
-            disabled={!name.trim() || loading}
-            aria-label="Crear rol"
-          >
-            <Plus className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+      <Button
+        type="button"
+        onClick={() => setRoleModalOpen(true)}
+        disabled={disabled || loading}
+      >
+        <Plus className="h-4 w-4" />
+        Agregar rol
+      </Button>
 
       <FieldError>{error}</FieldError>
 
@@ -228,15 +203,16 @@ export default function MinistryRolesManager({
           <TableHeader>
             <TableRow>
               <TableHead>Rol</TableHead>
+              <TableHead>Descripción</TableHead>
               <TableHead className="w-28">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableSkeletonRows columns={2} rows={3} />
+              <TableSkeletonRows columns={3} rows={3} />
             ) : roles.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={2} className="text-muted-foreground">
+                <TableCell colSpan={3} className="text-muted-foreground">
                   Todavía no hay roles para este ministerio.
                 </TableCell>
               </TableRow>
@@ -252,6 +228,9 @@ export default function MinistryRolesManager({
                     ) : (
                       role.name
                     )}
+                  </TableCell>
+                  <TableCell className="max-w-xs whitespace-normal text-muted-foreground">
+                    {role.description || "-"}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
@@ -296,7 +275,10 @@ export default function MinistryRolesManager({
                             type="button"
                             size="icon"
                             variant="destructive"
-                            onClick={() => handleDeleteRole(role._id)}
+                            onClick={() => {
+                              setRoleToDelete(role)
+                              setDeleteError("")
+                            }}
                             aria-label="Eliminar rol"
                           >
                             <Trash2 className="h-4 w-4" />
@@ -311,6 +293,67 @@ export default function MinistryRolesManager({
           </TableBody>
         </Table>
       </div>
+
+      <MinistryRoleModal
+        key={roleModalOpen ? "open" : "closed"}
+        open={roleModalOpen}
+        onOpenChange={setRoleModalOpen}
+        ministryId={ministryId}
+        onSuccess={async () => {
+          setSuccess("Rol creado correctamente.")
+          await fetchRoles()
+        }}
+      />
+
+      <AlertDialog
+        open={Boolean(roleToDelete)}
+        onOpenChange={(nextOpen) => {
+          if (deletingRole && !nextOpen) return
+
+          if (!nextOpen) {
+            setRoleToDelete(null)
+            setDeleteError("")
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Eliminar rol?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {roleToDelete
+                ? `Se eliminará el rol ${roleToDelete.name}. Esta acción no se puede deshacer.`
+                : "Esta acción no se puede deshacer."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+
+          <FieldError>{deleteError}</FieldError>
+
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingRole}>
+              Cancelar
+            </AlertDialogCancel>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => {
+                if (roleToDelete) {
+                  handleDeleteRole(roleToDelete._id)
+                }
+              }}
+              disabled={!roleToDelete || deletingRole}
+            >
+              {deletingRole ? (
+                <>
+                  <LoadingSpinner />
+                  Eliminando...
+                </>
+              ) : (
+                "Sí, eliminar"
+              )}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

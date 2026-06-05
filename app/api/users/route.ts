@@ -8,6 +8,7 @@ import {
   getTenantDbByName,
   normalizeEmail,
 } from "@/lib/tenant"
+import { isValidPhone, normalizePhone } from "@/lib/verification"
 
 function isLeaderRole(role: unknown) {
   if (typeof role !== "string") return false
@@ -63,9 +64,10 @@ export async function POST(req: Request) {
     )
   }
 
-  const { name, email, password, role, ministryId, ministryRoleId } = await req.json()
+  const { name, email, phone, password, role, ministryId, ministryRoleId } = await req.json()
   const trimmedName = typeof name === "string" ? name.trim() : ""
   const normalizedEmail = normalizeEmail(email || "")
+  const normalizedPhone = normalizePhone(phone)
   const trimmedPassword = typeof password === "string" ? password.trim() : ""
   const currentUserIsLeader = isLeaderRole(currentUser.user.role)
   const currentMinistryId =
@@ -91,6 +93,20 @@ export async function POST(req: Request) {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
     return NextResponse.json(
       { message: "Ingresa un correo electrónico válido" },
+      { status: 400 }
+    )
+  }
+
+  if (!normalizedPhone) {
+    return NextResponse.json(
+      { message: "El celular es obligatorio" },
+      { status: 400 }
+    )
+  }
+
+  if (!isValidPhone(normalizedPhone)) {
+    return NextResponse.json(
+      { message: "Ingresa un celular válido con 10 a 15 dígitos" },
       { status: 400 }
     )
   }
@@ -178,6 +194,9 @@ export async function POST(req: Request) {
   const newUser = {
     name: trimmedName,
     email: normalizedEmail,
+    phone: normalizedPhone,
+    emailVerified: false,
+    phoneVerified: false,
     password: hashedPassword,
     role: normalizedRole,
     ministryId: assignedMinistryId,

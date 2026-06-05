@@ -56,8 +56,10 @@ export default function LoginPage() {
 
     setLoading(false)
 
+    const data = await res.json().catch(() => null)
+
     if (res.ok) {
-      router.replace("/dashboard")
+      router.replace(data?.needsVerification ? "/verify" : "/dashboard")
       router.refresh()
     } else {
       setError("Credenciales incorrectas.")

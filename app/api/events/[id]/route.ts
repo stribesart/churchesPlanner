@@ -16,13 +16,14 @@ function parseEventInput(body: Record<string, unknown>) {
     typeof body.organizer === "string" ? body.organizer.trim() : ""
   const requiresRegistration = body.requiresRegistration === true
   const isPaidEvent = body.isPaidEvent === true
+  const rawPaymentAmount = Number(body.paymentAmount)
   const expectedAttendees =
     body.expectedAttendees === null ||
     body.expectedAttendees === undefined ||
     body.expectedAttendees === ""
       ? null
       : Number(body.expectedAttendees)
-  const paymentAmount = isPaidEvent ? Number(body.paymentAmount) : null
+  const paymentAmount = isPaidEvent ? rawPaymentAmount : null
   const paymentMethod =
     body.paymentMethod === "card" || body.paymentMethod === "transfer"
       ? body.paymentMethod
@@ -51,7 +52,7 @@ function parseEventInput(body: Record<string, unknown>) {
       message: "Ingresa un número de asistentes esperado mayor a 0",
     }
   }
-  if (isPaidEvent && (!Number.isFinite(paymentAmount) || paymentAmount <= 0)) {
+  if (isPaidEvent && (!Number.isFinite(rawPaymentAmount) || rawPaymentAmount <= 0)) {
     return { ok: false as const, message: "Ingresa un monto mayor a 0" }
   }
 

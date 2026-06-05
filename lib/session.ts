@@ -38,6 +38,10 @@ type TenantLike = {
 }
 
 function getSessionSecret() {
+  if (process.env.NODE_ENV === "production" && !process.env.SESSION_SECRET) {
+    throw new Error("SESSION_SECRET must be defined in production")
+  }
+
   return (
     process.env.SESSION_SECRET ||
     process.env.JWT_SECRET ||

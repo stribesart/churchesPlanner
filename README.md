@@ -1,36 +1,49 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Churches Planner
+
+Aplicacion Next.js para administrar iglesias: usuarios, ministerios, eventos,
+inventario, anuncios y ofrendas con separacion por tenant en MongoDB.
 
 ## Getting Started
 
-First, run the development server:
+Instala dependencias y levanta el servidor local:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Crea `.env.local` a partir de `.env.example`:
 
-## Learn More
+```bash
+cp .env.example .env.local
+```
 
-To learn more about Next.js, take a look at the following resources:
+Variables requeridas:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `MONGODB_URI`: conexion a MongoDB.
+- `SESSION_SECRET`: secreto largo y aleatorio para firmar sesiones. Es obligatorio en produccion.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Verificacion de contacto
 
-## Deploy on Vercel
+El sistema permite confirmar cuenta por correo, SMS o WhatsApp desde `/verify`.
+Para enviar correo real configura `RESEND_API_KEY` y `EMAIL_FROM`. Si no hay
+API key en local, el correo queda en modo manual y la pantalla muestra el codigo
+de prueba. En produccion no se muestran codigos manuales: correo requiere
+Resend configurado y SMS/WhatsApp requieren conectar su proveedor.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Production Checklist
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Antes de publicar:
+
+```bash
+npm run lint
+npm run build
+```
+
+En el proveedor de hosting, configura al menos `MONGODB_URI`, `SESSION_SECRET` y `NODE_ENV=production`.
+
+El endpoint `/api/health` responde el estado basico de la API para monitoreo.

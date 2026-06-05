@@ -32,6 +32,7 @@ type User = {
   _id?: string
   name: string
   email: string
+  phone?: string
   role: string
   ministryRoleId?: string | null
 }
@@ -41,7 +42,7 @@ type MinistryRole = {
   name: string
 }
 
-type UserField = "name" | "email" | "password" | "ministryRoleId"
+type UserField = "name" | "email" | "phone" | "password" | "ministryRoleId"
 type UserFieldErrors = Partial<Record<UserField, string>>
 
 type Props = {
@@ -113,6 +114,7 @@ function UserModalForm({
 
   const [name, setName] = useState(user?.name ?? "")
   const [email, setEmail] = useState(user?.email ?? "")
+  const [phone, setPhone] = useState(user?.phone ?? "")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [role, setRole] = useState(
@@ -152,6 +154,7 @@ function UserModalForm({
 
     const trimmedName = name.trim()
     const trimmedEmail = email.trim().toLowerCase()
+    const trimmedPhone = phone.trim()
     const trimmedPassword = password.trim()
     const nextFieldErrors: UserFieldErrors = {}
 
@@ -163,6 +166,14 @@ function UserModalForm({
       nextFieldErrors.email = "El correo electrónico es obligatorio."
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
       nextFieldErrors.email = "Ingresa un correo electrónico válido."
+    }
+
+    const normalizedPhone = trimmedPhone.replace(/[^\d+]/g, "")
+
+    if (!trimmedPhone) {
+      nextFieldErrors.phone = "El celular es obligatorio."
+    } else if (!/^\+?\d{10,15}$/.test(normalizedPhone)) {
+      nextFieldErrors.phone = "Ingresa un celular válido con 10 a 15 dígitos."
     }
 
     if (!isEdit && !trimmedPassword) {
@@ -201,6 +212,7 @@ function UserModalForm({
         body: JSON.stringify({
           name: trimmedName,
           email: trimmedEmail,
+          phone: trimmedPhone,
           password: trimmedPassword,
           role: isCurrentUserLeader ? "miembro colaborador" : role,
           ministryRoleId: isCurrentUserLeader ? ministryRoleId : undefined,
@@ -275,6 +287,21 @@ function UserModalForm({
             aria-invalid={Boolean(fieldErrors.email)}
           />
           <FieldError>{fieldErrors.email}</FieldError>
+        </div>
+
+        <div>
+          <Label>Celular</Label>
+          <Input
+            type="tel"
+            placeholder="+5215512345678"
+            value={phone}
+            onChange={(e) => {
+              setPhone(e.target.value)
+              clearFieldError("phone")
+            }}
+            aria-invalid={Boolean(fieldErrors.phone)}
+          />
+          <FieldError>{fieldErrors.phone}</FieldError>
         </div>
 
         <div>

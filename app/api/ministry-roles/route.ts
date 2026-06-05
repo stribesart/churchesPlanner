@@ -45,6 +45,15 @@ function resolveReadableMinistryId({
     return { ok: true as const, ministryId: currentMinistryId }
   }
 
+  if (currentRole === "lider") {
+    return {
+      ok: false as const,
+      status: 403,
+      message:
+        "Tienes que decirle al administrador que te asigne a tu ministerio.",
+    }
+  }
+
   return { ok: false as const, status: 403, message: "Acceso denegado" }
 }
 
@@ -96,7 +105,7 @@ export async function POST(req: Request) {
     )
   }
 
-  const { name, ministryId } = await req.json()
+  const { name, description, ministryId } = await req.json()
   const currentRole = getCurrentRole(currentUser.user.role)
   const currentMinistryId = getCurrentMinistryId(currentUser.user.ministryId)
   const requestedMinistryId =
@@ -124,6 +133,13 @@ export async function POST(req: Request) {
   if (typeof name !== "string" || !name.trim()) {
     return NextResponse.json(
       { message: "El nombre del rol es obligatorio" },
+      { status: 400 }
+    )
+  }
+
+  if (description !== undefined && typeof description !== "string") {
+    return NextResponse.json(
+      { message: "La descripción del rol no es válida" },
       { status: 400 }
     )
   }
@@ -164,6 +180,7 @@ export async function POST(req: Request) {
   const newRole: MinistryRole = {
     ministryId: access.ministryId,
     name: name.trim(),
+    description: typeof description === "string" ? description.trim() : "",
     normalizedName,
     createdBy: currentUser.user._id.toString(),
     createdAt: new Date(),

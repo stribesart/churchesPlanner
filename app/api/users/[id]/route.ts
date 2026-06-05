@@ -7,6 +7,7 @@ import {
   removeUserFromTenantIndex,
   updateUserTenantIndex,
 } from "@/lib/tenant"
+import { isValidPhone, normalizePhone } from "@/lib/verification"
 import { ObjectId } from "mongodb"
 import bcrypt from "bcryptjs"
 
@@ -47,9 +48,10 @@ export async function PUT(
       )
     }
 
-    const { name, email, password, role, ministryId, ministryRoleId } = await req.json()
+    const { name, email, phone, password, role, ministryId, ministryRoleId } = await req.json()
     const trimmedName = typeof name === "string" ? name.trim() : ""
     const normalizedEmail = normalizeEmail(email || "")
+    const normalizedPhone = normalizePhone(phone)
     const trimmedPassword = typeof password === "string" ? password.trim() : ""
     const db = await getTenantDbByName(tenantDbName)
     const userId = new ObjectId(id)
@@ -84,6 +86,20 @@ export async function PUT(
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
       return NextResponse.json(
         { message: "Ingresa un correo electrónico válido" },
+        { status: 400 }
+      )
+    }
+
+    if (!normalizedPhone) {
+      return NextResponse.json(
+        { message: "El celular es obligatorio" },
+        { status: 400 }
+      )
+    }
+
+    if (!isValidPhone(normalizedPhone)) {
+      return NextResponse.json(
+        { message: "Ingresa un celular válido con 10 a 15 dígitos" },
         { status: 400 }
       )
     }
@@ -185,6 +201,9 @@ export async function PUT(
     const updateData: {
       name?: string
       email?: string
+      phone?: string
+      emailVerified?: boolean
+      phoneVerified?: boolean
       password?: string
       role?: string
       ministryId?: string | null
@@ -192,7 +211,16 @@ export async function PUT(
     } = {
       name: trimmedName,
       email: normalizedEmail,
+      phone: normalizedPhone,
       role: normalizedRole,
+    }
+
+    if (targetUser.email !== normalizedEmail) {
+      updateData.emailVerified = false
+    }
+
+    if (targetUser.phone !== normalizedPhone) {
+      updateData.phoneVerified = false
     }
 
     if (currentUserIsLeader) {

@@ -4,6 +4,7 @@ export type MinistryRole = {
   _id?: ObjectId
   ministryId: string
   name: string
+  description?: string
   normalizedName: string
   createdBy: string
   createdAt: Date
