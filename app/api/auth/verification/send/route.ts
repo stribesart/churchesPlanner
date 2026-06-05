@@ -99,8 +99,18 @@ export async function POST(req: Request) {
     })
 
     if (!emailResult.ok && emailResult.mode === "email") {
+      console.error("Resend verification email failed", {
+        status: emailResult.status,
+        error: emailResult.error,
+        to: destination,
+      })
+
       return NextResponse.json(
-        { message: "No se pudo enviar el correo de verificación" },
+        {
+          message: "No se pudo enviar el correo de verificación",
+          providerStatus: emailResult.status,
+          providerError: emailResult.error,
+        },
         { status: 502 }
       )
     }

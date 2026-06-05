@@ -52,6 +52,7 @@ export async function sendVerificationEmail({
     return {
       ok: false as const,
       mode: "email" as const,
+      status: response.status,
       error: errorText,
     }
   }
