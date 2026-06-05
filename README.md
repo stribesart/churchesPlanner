@@ -27,13 +27,13 @@ Variables requeridas:
 - `MONGODB_URI`: conexion a MongoDB.
 - `SESSION_SECRET`: secreto largo y aleatorio para firmar sesiones. Es obligatorio en produccion.
 
-## Verificacion de contacto
+## Verificacion de correo
 
-El sistema permite confirmar cuenta por correo, SMS o WhatsApp desde `/verify`.
-Para enviar correo real configura `RESEND_API_KEY` y `EMAIL_FROM`. Si no hay
-API key en local, el correo queda en modo manual y la pantalla muestra el codigo
-de prueba. En produccion no se muestran codigos manuales: correo requiere
-Resend configurado y SMS/WhatsApp requieren conectar su proveedor.
+El sistema permite confirmar cuenta por correo desde `/verify`. Para enviar
+correo real configura `RESEND_API_KEY` y `EMAIL_FROM`. Si no hay API key en
+local, el correo queda en modo manual y la pantalla muestra el codigo de prueba.
+En produccion no se muestran codigos manuales: correo requiere Resend
+configurado.
 
 ## Production Checklist
 
