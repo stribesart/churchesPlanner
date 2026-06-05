@@ -40,7 +40,7 @@ export async function POST(req: Request) {
 
   const response = NextResponse.json({
     message: "Login correcto",
-    needsVerification: !user.emailVerified && !user.phoneVerified,
+    needsVerification: !user.emailVerified,
   })
   const payload = buildSessionPayload({
     user,

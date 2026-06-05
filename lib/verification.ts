@@ -3,10 +3,10 @@ import { createHash, randomInt } from "crypto"
 export const VERIFICATION_CODE_TTL_SECONDS = 10 * 60
 export const VERIFICATION_MAX_ATTEMPTS = 5
 
-export type VerificationChannel = "email" | "sms" | "whatsapp"
+export type VerificationChannel = "email"
 
 export function isVerificationChannel(value: unknown): value is VerificationChannel {
-  return value === "email" || value === "sms" || value === "whatsapp"
+  return value === "email"
 }
 
 export function normalizePhone(value: unknown) {
@@ -44,24 +44,19 @@ export function getVerificationExpiration() {
 }
 
 export function getVerificationDestination({
-  channel,
   email,
-  phone,
 }: {
   channel: VerificationChannel
   email?: string
   phone?: string
 }) {
-  return channel === "email" ? email || "" : phone || ""
+  return email || ""
 }
 
-export function getVerificationField(channel: VerificationChannel) {
-  return channel === "email" ? "emailVerified" : "phoneVerified"
+export function getVerificationField() {
+  return "emailVerified"
 }
 
-export function getVerificationSentMessage(channel: VerificationChannel) {
-  if (channel === "email") return "Código enviado al correo"
-  if (channel === "sms") return "Código enviado por SMS"
-
-  return "Código enviado por WhatsApp"
+export function getVerificationSentMessage() {
+  return "Código enviado al correo"
 }

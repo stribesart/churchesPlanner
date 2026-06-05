@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Mail, MessageSquare, Smartphone } from "lucide-react"
+import { Mail } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -16,9 +16,6 @@ import {
 import { Field, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
-
-type VerificationChannel = "email" | "sms" | "whatsapp"
 
 type VerificationStatus = {
   email: string
@@ -27,16 +24,9 @@ type VerificationStatus = {
   phoneVerified: boolean
 }
 
-const channelLabels: Record<VerificationChannel, string> = {
-  email: "correo",
-  sms: "SMS",
-  whatsapp: "WhatsApp",
-}
-
 export default function VerifyPage() {
   const router = useRouter()
   const [status, setStatus] = useState<VerificationStatus | null>(null)
-  const [channel, setChannel] = useState<VerificationChannel>("email")
   const [code, setCode] = useState("")
   const [manualCode, setManualCode] = useState("")
   const [message, setMessage] = useState("")
@@ -75,7 +65,7 @@ export default function VerifyPage() {
     const res = await fetch("/api/auth/verification/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ channel }),
+      body: JSON.stringify({ channel: "email" }),
     })
     const data = await res.json()
 
@@ -97,7 +87,7 @@ export default function VerifyPage() {
     const res = await fetch("/api/auth/verification/confirm", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ channel, code }),
+      body: JSON.stringify({ channel: "email", code }),
     })
     const data = await res.json()
 
@@ -114,8 +104,7 @@ export default function VerifyPage() {
   }
 
   const emailDone = Boolean(status?.emailVerified)
-  const phoneDone = Boolean(status?.phoneVerified)
-  const currentDestination = channel === "email" ? status?.email : status?.phone
+  const currentDestination = status?.email
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -124,7 +113,7 @@ export default function VerifyPage() {
           <CardHeader>
             <CardTitle>Verifica tu cuenta</CardTitle>
             <CardDescription>
-              Confirma al menos un medio de contacto para continuar.
+              Confirma tu correo electrónico para continuar.
             </CardDescription>
           </CardHeader>
 
@@ -135,43 +124,13 @@ export default function VerifyPage() {
               </div>
             ) : (
               <FieldGroup>
-                <Tabs
-                  value={channel}
-                  onValueChange={(value) => {
-                    setChannel(value as VerificationChannel)
-                    setError("")
-                    setMessage("")
-                    setManualCode("")
-                  }}
-                >
-                  <TabsList className="grid h-auto w-full grid-cols-3">
-                    <TabsTrigger value="email" className="gap-2">
-                      <Mail className="h-4 w-4" />
-                      Correo
-                    </TabsTrigger>
-                    <TabsTrigger value="sms" className="gap-2">
-                      <Smartphone className="h-4 w-4" />
-                      SMS
-                    </TabsTrigger>
-                    <TabsTrigger value="whatsapp" className="gap-2">
-                      <MessageSquare className="h-4 w-4" />
-                      WhatsApp
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-
                 <div className="rounded-lg border bg-muted/40 px-4 py-3 text-sm">
-                  <div className="font-medium">
-                    {channel === "email" ? status?.email : status?.phone}
+                  <div className="flex items-center gap-2 font-medium">
+                    <Mail className="h-4 w-4" />
+                    {status?.email}
                   </div>
                   <div className="text-muted-foreground">
-                    {channel === "email"
-                      ? emailDone
-                        ? "Correo verificado"
-                        : "Correo pendiente"
-                      : phoneDone
-                        ? "Celular verificado"
-                        : "Celular pendiente"}
+                    {emailDone ? "Correo verificado" : "Correo pendiente"}
                   </div>
                 </div>
 
@@ -187,7 +146,7 @@ export default function VerifyPage() {
                       Enviando...
                     </>
                   ) : (
-                    `Enviar código por ${channelLabels[channel]}`
+                    "Enviar código por correo"
                   )}
                 </Button>
 
@@ -224,7 +183,7 @@ export default function VerifyPage() {
               type="button"
               variant="outline"
               onClick={() => router.replace("/dashboard")}
-              disabled={!emailDone && !phoneDone}
+              disabled={!emailDone}
             >
               Continuar
             </Button>

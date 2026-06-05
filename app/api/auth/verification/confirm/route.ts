@@ -20,7 +20,7 @@ export async function POST(req: Request) {
 
   if (!isVerificationChannel(channel)) {
     return NextResponse.json(
-      { message: "Selecciona correo, SMS o WhatsApp" },
+      { message: "La verificación por correo es el único canal disponible" },
       { status: 400 }
     )
   }
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
     { _id: userId },
     {
       $set: {
-        [getVerificationField(channel)]: true,
+        [getVerificationField()]: true,
         updatedAt: new Date(),
       },
     }

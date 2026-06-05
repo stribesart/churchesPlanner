@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
   if (!isVerificationChannel(channel)) {
     return NextResponse.json(
-      { message: "Selecciona correo, SMS o WhatsApp" },
+      { message: "La verificación por correo es el único canal disponible" },
       { status: 400 }
     )
   }
@@ -38,17 +38,11 @@ export async function POST(req: Request) {
   const destination = getVerificationDestination({
     channel,
     email: user.email,
-    phone: user.phone,
   })
 
   if (!destination) {
     return NextResponse.json(
-      {
-        message:
-          channel === "email"
-            ? "Este usuario no tiene correo registrado"
-            : "Este usuario no tiene celular registrado",
-      },
+      { message: "Este usuario no tiene correo registrado" },
       { status: 400 }
     )
   }
@@ -60,13 +54,6 @@ export async function POST(req: Request) {
   if (isProduction && channel === "email" && !canSendRealEmail()) {
     return NextResponse.json(
       { message: "El proveedor de correo no está configurado" },
-      { status: 501 }
-    )
-  }
-
-  if (isProduction && channel !== "email") {
-    return NextResponse.json(
-      { message: "El proveedor de SMS/WhatsApp no está configurado" },
       { status: 501 }
     )
   }
@@ -97,7 +84,6 @@ export async function POST(req: Request) {
       code,
       name: user.name,
     })
-    console.log("this is a probe that console.logs are visibles")
 
     if (!emailResult.ok && emailResult.mode === "email") {
       console.error("Resend verification email failed in production", {
@@ -120,7 +106,7 @@ export async function POST(req: Request) {
   const isManualDelivery = !isProduction && (channel !== "email" || !canSendRealEmail())
 
   return NextResponse.json({
-    message: getVerificationSentMessage(channel),
+    message: getVerificationSentMessage(),
     expiresAt,
     deliveryMode: isManualDelivery ? "manual" : "email",
     devCode: isManualDelivery ? code : undefined,
