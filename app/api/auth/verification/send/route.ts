@@ -97,9 +97,10 @@ export async function POST(req: Request) {
       code,
       name: user.name,
     })
+    console.log("this is a probe that console.logs are visibles")
 
     if (!emailResult.ok && emailResult.mode === "email") {
-      console.error("Resend verification email failed", {
+      console.error("Resend verification email failed in production", {
         status: emailResult.status,
         error: emailResult.error,
         to: destination,
