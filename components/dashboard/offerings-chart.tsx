@@ -1,9 +1,13 @@
 "use client"
 
 import * as React from "react"
+import { Download, FileText } from "lucide-react"
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
 
 import { useIsMobile } from "@/hooks/use-mobile"
+import { downloadReport } from "@/lib/report-download"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   Card,
   CardAction,
@@ -29,6 +33,14 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@/components/ui/toggle-group"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 type Offering = {
   _id: string
@@ -64,11 +76,86 @@ function getRangeDays(timeRange: string) {
   return 90
 }
 
+function getRangeLabel(timeRange: string) {
+  if (timeRange === "7d") return "Últimos 7 días"
+  if (timeRange === "30d") return "Últimos 30 días"
+
+  return "Últimos 3 meses"
+}
+
+function getRangeStartDate(timeRange: string) {
+  const rangeDays = getRangeDays(timeRange)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const startDate = new Date(today)
+  startDate.setDate(today.getDate() - (rangeDays - 1))
+
+  return startDate
+}
+
 function formatMoney(amount: number, currency = "MXN") {
   return new Intl.NumberFormat("es-MX", {
     style: "currency",
     currency,
   }).format(amount)
+}
+
+function formatDisplayDate(value?: string) {
+  if (!value) return "-"
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) return "-"
+
+  return date.toLocaleDateString("es-MX", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  })
+}
+
+function getOfferingsInRange(offerings: Offering[], timeRange: string) {
+  const startDate = getRangeStartDate(timeRange)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  return offerings
+    .filter((offering) => {
+      if (!offering.createdAt) return false
+
+      const createdAt = new Date(offering.createdAt)
+
+      if (Number.isNaN(createdAt.getTime())) return false
+
+      createdAt.setHours(0, 0, 0, 0)
+
+      return createdAt >= startDate && createdAt <= today
+    })
+    .sort((firstOffering, secondOffering) => {
+      const firstDate = firstOffering.createdAt
+        ? new Date(firstOffering.createdAt).getTime()
+        : 0
+      const secondDate = secondOffering.createdAt
+        ? new Date(secondOffering.createdAt).getTime()
+        : 0
+
+      return secondDate - firstDate
+    })
+}
+
+function filterOfferings(offerings: Offering[], minAmount: string, maxAmount: string) {
+  const min = minAmount.trim() ? Number(minAmount) : null
+  const max = maxAmount.trim() ? Number(maxAmount) : null
+
+  return offerings.filter((offering) => {
+    const matchesMin =
+      min === null || Number.isNaN(min) || offering.amount >= min
+    const matchesMax =
+      max === null || Number.isNaN(max) || offering.amount <= max
+
+    return matchesMin && matchesMax
+  })
 }
 
 function buildOfferingsData(
@@ -114,6 +201,11 @@ function buildOfferingsData(
 export function OfferingsChart({ offerings }: Props) {
   const isMobile = useIsMobile()
   const [timeRange, setTimeRange] = React.useState("90d")
+  const [minAmount, setMinAmount] = React.useState("")
+  const [maxAmount, setMaxAmount] = React.useState("")
+  const [downloadingFormat, setDownloadingFormat] =
+    React.useState<"csv" | "pdf" | null>(null)
+  const [downloadError, setDownloadError] = React.useState("")
 
   React.useEffect(() => {
     if (isMobile) {
@@ -125,10 +217,44 @@ export function OfferingsChart({ offerings }: Props) {
     () => buildOfferingsData(offerings, timeRange),
     [offerings, timeRange]
   )
+  const offeringsInRange = React.useMemo(
+    () => getOfferingsInRange(offerings, timeRange),
+    [offerings, timeRange]
+  )
+  const filteredOfferings = React.useMemo(
+    () => filterOfferings(offeringsInRange, minAmount, maxAmount),
+    [maxAmount, minAmount, offeringsInRange]
+  )
   const totalAmountInRange = chartData.reduce(
     (total, item) => total + item.amount,
     0
   )
+  async function handleDownload(format: "csv" | "pdf") {
+    const params = new URLSearchParams({
+      type: "offerings",
+      format,
+      range: timeRange,
+    })
+
+    if (minAmount.trim()) params.set("minAmount", minAmount.trim())
+    if (maxAmount.trim()) params.set("maxAmount", maxAmount.trim())
+
+    setDownloadingFormat(format)
+    setDownloadError("")
+
+    try {
+      await downloadReport(
+        `/api/reports?${params.toString()}`,
+        `reporte-ofrendas.${format}`
+      )
+    } catch (error) {
+      setDownloadError(
+        error instanceof Error ? error.message : "No se pudo generar el reporte."
+      )
+    } finally {
+      setDownloadingFormat(null)
+    }
+  }
 
   return (
     <Card className="@container/card min-w-0">
@@ -140,7 +266,7 @@ export function OfferingsChart({ offerings }: Props) {
           </span>
           <span className="@[540px]/card:hidden">Ofrendas por fecha</span>
         </CardDescription>
-        <CardAction className="static col-start-1 row-start-auto justify-self-start @[767px]/card:col-start-2 @[767px]/card:row-start-1 @[767px]/card:justify-self-end">
+        <CardAction className="static col-start-1 row-start-auto flex flex-col gap-2 justify-self-start @[767px]/card:col-start-2 @[767px]/card:row-start-1 @[767px]/card:items-end @[767px]/card:justify-self-end">
           <ToggleGroup
             type="single"
             value={timeRange}
@@ -174,9 +300,36 @@ export function OfferingsChart({ offerings }: Props) {
               </SelectItem>
             </SelectContent>
           </Select>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={filteredOfferings.length === 0 || downloadingFormat !== null}
+            onClick={() => handleDownload("csv")}
+            className="w-full @[767px]/card:w-auto"
+          >
+            <Download className="h-4 w-4" />
+            {downloadingFormat === "csv" ? "Descargando..." : "Descargar CSV"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={filteredOfferings.length === 0 || downloadingFormat !== null}
+            onClick={() => handleDownload("pdf")}
+            className="w-full @[767px]/card:w-auto"
+          >
+            <FileText className="h-4 w-4" />
+            {downloadingFormat === "pdf" ? "Descargando..." : "Descargar PDF"}
+          </Button>
         </CardAction>
       </CardHeader>
-      <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
+      <CardContent className="space-y-4 px-2 pt-4 sm:px-6 sm:pt-6">
+        {downloadError ? (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
+            {downloadError}
+          </div>
+        ) : null}
         <ChartContainer
           config={chartConfig}
           className="aspect-auto h-[250px] min-w-0 w-full"
@@ -234,9 +387,56 @@ export function OfferingsChart({ offerings }: Props) {
             />
           </AreaChart>
         </ChartContainer>
-        <p className="mt-4 text-sm text-muted-foreground">
-          {formatMoney(totalAmountInRange)} registrados en el rango seleccionado.
+        <p className="text-sm text-muted-foreground">
+          {formatMoney(totalAmountInRange)} registrados en {getRangeLabel(timeRange).toLowerCase()}.
         </p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <Input
+            value={minAmount}
+            onChange={(event) => setMinAmount(event.target.value)}
+            placeholder="Monto mínimo"
+            aria-label="Filtrar ofrendas por monto mínimo"
+            inputMode="decimal"
+          />
+          <Input
+            value={maxAmount}
+            onChange={(event) => setMaxAmount(event.target.value)}
+            placeholder="Monto máximo"
+            aria-label="Filtrar ofrendas por monto máximo"
+            inputMode="decimal"
+          />
+        </div>
+        <Table
+          className="min-w-[480px]"
+          containerClassName="max-h-72 rounded-lg border bg-background"
+        >
+          <TableHeader>
+            <TableRow>
+              <TableHead>Fecha</TableHead>
+              <TableHead>Monto</TableHead>
+              <TableHead>Moneda</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredOfferings.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={3} className="text-center text-muted-foreground">
+                  No hay ofrendas en este rango
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredOfferings.map((offering) => (
+                <TableRow key={offering._id}>
+                  <TableCell>{formatDisplayDate(offering.createdAt)}</TableCell>
+                  <TableCell>
+                    {formatMoney(offering.amount, offering.currency || "MXN")}
+                  </TableCell>
+                  <TableCell>{offering.currency || "MXN"}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </CardContent>
     </Card>
   )

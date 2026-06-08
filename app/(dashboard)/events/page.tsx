@@ -1,12 +1,14 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { downloadReport } from "@/lib/report-download"
 import EventModal from "@/components/events/event-modal"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
@@ -39,7 +41,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { ClipboardList, Filter, Pencil, Trash2 } from "lucide-react"
+import { ClipboardList, Download, FileText, Filter, Pencil, Trash2 } from "lucide-react"
 
 type Event = {
   _id: string
@@ -464,6 +466,134 @@ function formatDateTime(value?: string) {
   })
 }
 
+function formatCsvDate(value?: string) {
+  if (!value) return ""
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) return value
+
+  return date.toISOString().slice(0, 10)
+}
+
+function formatCsvValue(value: string | number | null | undefined) {
+  const rawValue = value === null || value === undefined ? "" : String(value)
+  const escapedValue = rawValue.replace(/"/g, '""')
+
+  return /[",\n\r]/.test(escapedValue) ? `"${escapedValue}"` : escapedValue
+}
+
+function getCsvPaymentAmount(registration: EventRegistration) {
+  return typeof registration.paymentAmount === "number" &&
+    Number.isFinite(registration.paymentAmount)
+    ? registration.paymentAmount
+    : 0
+}
+
+function buildRegistrationsSummary(
+  event: Event,
+  registrations: EventRegistration[]
+) {
+  const paidRegistrations = registrations.filter(
+    (registration) => registration.paymentStatus === "paid"
+  )
+  const pendingRegistrations = registrations.filter(
+    (registration) => registration.paymentStatus === "pending"
+  )
+  const notRequiredRegistrations = registrations.filter(
+    (registration) => registration.paymentStatus === "not_required"
+  )
+  const paidAmount = paidRegistrations.reduce(
+    (total, registration) => total + getCsvPaymentAmount(registration),
+    0
+  )
+  const pendingAmount = pendingRegistrations.reduce(
+    (total, registration) => total + getCsvPaymentAmount(registration),
+    0
+  )
+
+  return [
+    ["Resumen"],
+    ["Evento", event.name],
+    ["Fecha", event.date],
+    ["Horario", `${event.startTime} - ${event.endTime}`],
+    ["Ubicacion", event.location],
+    ["Organizador", event.organizerName || "Sin organizador"],
+    ["Total de registros", registrations.length],
+    ["Pagados", paidRegistrations.length],
+    ["Pendientes", pendingRegistrations.length],
+    ["No requieren pago", notRequiredRegistrations.length],
+    ["Total recaudado MXN", paidAmount],
+    ["Total pendiente MXN", pendingAmount],
+  ]
+}
+
+function buildRegistrationsCsv(event: Event, registrations: EventRegistration[]) {
+  const headers = [
+    "Evento",
+    "Fecha del evento",
+    "Horario",
+    "Ubicacion",
+    "Organizador",
+    "Nombre",
+    "Correo",
+    "Contacto",
+    "Estado de pago",
+    "Metodo de pago",
+    "Monto MXN",
+    "Fecha de registro",
+  ]
+  const rows = registrations.map((registration) => [
+    event.name,
+    event.date,
+    `${event.startTime} - ${event.endTime}`,
+    event.location,
+    event.organizerName || "Sin organizador",
+    registration.name || "",
+    registration.email || "",
+    registration.contact || "",
+    formatPaymentStatus(registration.paymentStatus),
+    formatPaymentMethod(registration.paymentMethod),
+    getCsvPaymentAmount(registration) || "",
+    formatCsvDate(registration.createdAt),
+  ])
+  const summary = buildRegistrationsSummary(event, registrations)
+  const csvRows = [...summary, [], headers, ...rows]
+
+  return csvRows
+    .map((row) => row.map(formatCsvValue).join(","))
+    .join("\n")
+}
+
+function createCsvFileName(event: Event) {
+  const eventName = event.name
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60)
+  const today = new Date().toISOString().slice(0, 10)
+
+  return `registros-${eventName || "evento"}-${today}.csv`
+}
+
+function downloadRegistrationsCsv(event: Event, registrations: EventRegistration[]) {
+  const csv = buildRegistrationsCsv(event, registrations)
+  const blob = new Blob([`\uFEFF${csv}`], {
+    type: "text/csv;charset=utf-8",
+  })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement("a")
+
+  link.href = url
+  link.download = createCsvFileName(event)
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
 function EventRegistrationsDialog({
   open,
   onOpenChange,
@@ -479,6 +609,36 @@ function EventRegistrationsDialog({
   loading: boolean
   error: string
 }) {
+  const canDownload = Boolean(event) && !loading && registrations.length > 0
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
+  const [downloadError, setDownloadError] = useState("")
+
+  async function handleDownloadPdf() {
+    if (!event) return
+
+    const params = new URLSearchParams({
+      type: "event-registrations",
+      format: "pdf",
+      eventId: event._id,
+    })
+
+    setDownloadingPdf(true)
+    setDownloadError("")
+
+    try {
+      await downloadReport(
+        `/api/reports?${params.toString()}`,
+        `reporte-registros-${event._id}.pdf`
+      )
+    } catch (error) {
+      setDownloadError(
+        error instanceof Error ? error.message : "No se pudo generar el reporte."
+      )
+    } finally {
+      setDownloadingPdf(false)
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-5xl">
@@ -492,6 +652,12 @@ function EventRegistrationsDialog({
         {error ? (
           <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
             {error}
+          </div>
+        ) : null}
+
+        {downloadError ? (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-4 py-3 text-sm font-medium text-destructive">
+            {downloadError}
           </div>
         ) : null}
 
@@ -535,6 +701,33 @@ function EventRegistrationsDialog({
             )}
           </TableBody>
         </Table>
+
+        <DialogFooter>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              if (!event) return
+
+              downloadRegistrationsCsv(event, registrations)
+            }}
+            disabled={!canDownload || downloadingPdf}
+            className="w-full sm:w-auto"
+          >
+            <Download className="h-4 w-4" />
+            Descargar CSV
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleDownloadPdf}
+            disabled={!canDownload || downloadingPdf}
+            className="w-full sm:w-auto"
+          >
+            <FileText className="h-4 w-4" />
+            {downloadingPdf ? "Descargando..." : "Descargar PDF"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

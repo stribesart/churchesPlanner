@@ -1,8 +1,9 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Filter, Pencil, Trash2 } from "lucide-react"
+import { Download, FileText, Filter, Pencil, Trash2 } from "lucide-react"
 
+import { downloadReport } from "@/lib/report-download"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -154,6 +155,8 @@ export default function InventoryPage() {
   const [loading, setLoading] = useState(true)
   const [pageError, setPageError] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  const [downloadingFormat, setDownloadingFormat] =
+    useState<"csv" | "pdf" | null>(null)
 
   const leader = isLeaderRole(currentUser?.role)
   const currentMinistryId =
@@ -264,6 +267,40 @@ export default function InventoryPage() {
   const hasFiltersToClear =
     Boolean(filterName) || Boolean(filterSerialNumber) || Boolean(filterMinistryId)
 
+  async function handleDownloadReport(format: "csv" | "pdf") {
+    const params = new URLSearchParams({
+      type: "inventory",
+      format,
+    })
+
+    if (filterName.trim()) params.set("search", filterName.trim())
+    if (filterSerialNumber.trim()) {
+      params.set("serialNumber", filterSerialNumber.trim())
+    }
+    if (filterMinistryId) {
+      params.set(
+        "ministryId",
+        filterMinistryId === generalValue ? "general" : filterMinistryId
+      )
+    }
+
+    setDownloadingFormat(format)
+    setPageError("")
+
+    try {
+      await downloadReport(
+        `/api/reports?${params.toString()}`,
+        `reporte-inventario.${format}`
+      )
+    } catch (error) {
+      setPageError(
+        error instanceof Error ? error.message : "No se pudo generar el reporte."
+      )
+    } finally {
+      setDownloadingFormat(null)
+    }
+  }
+
   return (
     <div>
       <SubmittingOverlay
@@ -289,6 +326,29 @@ export default function InventoryPage() {
       >
         + Nuevo recurso
       </Button>
+
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={loading || filteredItems.length === 0 || downloadingFormat !== null}
+          onClick={() => handleDownloadReport("csv")}
+          className="w-full sm:w-auto"
+        >
+          <Download className="h-4 w-4" />
+          {downloadingFormat === "csv" ? "Descargando..." : "Descargar CSV"}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={loading || filteredItems.length === 0 || downloadingFormat !== null}
+          onClick={() => handleDownloadReport("pdf")}
+          className="w-full sm:w-auto"
+        >
+          <FileText className="h-4 w-4" />
+          {downloadingFormat === "pdf" ? "Descargando..." : "Descargar PDF"}
+        </Button>
+      </div>
 
       <div className="theme-surface mt-4 mb-4 rounded-lg border p-4">
         <div className="mb-3 flex items-center gap-2 text-sm font-semibold">

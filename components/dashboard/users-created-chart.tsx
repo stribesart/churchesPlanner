@@ -1,9 +1,13 @@
 "use client"
 
 import * as React from "react"
+import { Download, FileText } from "lucide-react"
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
 
 import { useIsMobile } from "@/hooks/use-mobile"
+import { downloadReport } from "@/lib/report-download"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   Card,
   CardAction,
@@ -29,9 +33,21 @@ import {
   ToggleGroup,
   ToggleGroupItem,
 } from "@/components/ui/toggle-group"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 type User = {
   _id: string
+  name?: string
+  displayName?: string
+  email?: string
+  age?: number | string
   createdAt?: string
 }
 
@@ -60,6 +76,98 @@ function getRangeDays(timeRange: string) {
   if (timeRange === "30d") return 30
 
   return 90
+}
+
+function getRangeLabel(timeRange: string) {
+  if (timeRange === "7d") return "Últimos 7 días"
+  if (timeRange === "30d") return "Últimos 30 días"
+
+  return "Últimos 3 meses"
+}
+
+function getRangeStartDate(timeRange: string) {
+  const rangeDays = getRangeDays(timeRange)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  const startDate = new Date(today)
+  startDate.setDate(today.getDate() - (rangeDays - 1))
+
+  return startDate
+}
+
+function formatDisplayDate(value?: string) {
+  if (!value) return "-"
+
+  const date = new Date(value)
+
+  if (Number.isNaN(date.getTime())) return "-"
+
+  return date.toLocaleDateString("es-MX", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  })
+}
+
+function getUserName(user: User) {
+  return user.displayName || user.name || user.email || "Usuario"
+}
+
+function getUserAge(user: User) {
+  if (typeof user.age === "number" && Number.isFinite(user.age)) {
+    return user.age
+  }
+
+  if (typeof user.age === "string" && user.age.trim()) {
+    return user.age.trim()
+  }
+
+  return "-"
+}
+
+function getUsersInRange(users: User[], timeRange: string) {
+  const startDate = getRangeStartDate(timeRange)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+
+  return users
+    .filter((user) => {
+      if (!user.createdAt) return false
+
+      const createdAt = new Date(user.createdAt)
+
+      if (Number.isNaN(createdAt.getTime())) return false
+
+      createdAt.setHours(0, 0, 0, 0)
+
+      return createdAt >= startDate && createdAt <= today
+    })
+    .sort((firstUser, secondUser) => {
+      const firstDate = firstUser.createdAt
+        ? new Date(firstUser.createdAt).getTime()
+        : 0
+      const secondDate = secondUser.createdAt
+        ? new Date(secondUser.createdAt).getTime()
+        : 0
+
+      return secondDate - firstDate
+    })
+}
+
+function filterUsers(users: User[], search: string, age: string) {
+  const normalizedSearch = search.trim().toLowerCase()
+  const normalizedAge = age.trim()
+
+  return users.filter((user) => {
+    const matchesSearch =
+      !normalizedSearch ||
+      getUserName(user).toLowerCase().includes(normalizedSearch)
+    const userAge = getUserAge(user)
+    const matchesAge = !normalizedAge || String(userAge) === normalizedAge
+
+    return matchesSearch && matchesAge
+  })
 }
 
 function buildUsersCreatedData(users: User[], timeRange: string): ChartPoint[] {
@@ -102,6 +210,11 @@ function buildUsersCreatedData(users: User[], timeRange: string): ChartPoint[] {
 export function UsersCreatedChart({ users }: Props) {
   const isMobile = useIsMobile()
   const [timeRange, setTimeRange] = React.useState("90d")
+  const [search, setSearch] = React.useState("")
+  const [ageFilter, setAgeFilter] = React.useState("")
+  const [downloadingFormat, setDownloadingFormat] =
+    React.useState<"csv" | "pdf" | null>(null)
+  const [downloadError, setDownloadError] = React.useState("")
 
   React.useEffect(() => {
     if (isMobile) {
@@ -113,10 +226,44 @@ export function UsersCreatedChart({ users }: Props) {
     () => buildUsersCreatedData(users, timeRange),
     [users, timeRange]
   )
+  const usersInRange = React.useMemo(
+    () => getUsersInRange(users, timeRange),
+    [users, timeRange]
+  )
+  const filteredUsers = React.useMemo(
+    () => filterUsers(usersInRange, search, ageFilter),
+    [ageFilter, search, usersInRange]
+  )
   const totalUsersInRange = chartData.reduce(
     (total, item) => total + item.users,
     0
   )
+  async function handleDownload(format: "csv" | "pdf") {
+    const params = new URLSearchParams({
+      type: "users",
+      format,
+      range: timeRange,
+    })
+
+    if (search.trim()) params.set("search", search.trim())
+    if (ageFilter.trim()) params.set("age", ageFilter.trim())
+
+    setDownloadingFormat(format)
+    setDownloadError("")
+
+    try {
+      await downloadReport(
+        `/api/reports?${params.toString()}`,
+        `reporte-usuarios.${format}`
+      )
+    } catch (error) {
+      setDownloadError(
+        error instanceof Error ? error.message : "No se pudo generar el reporte."
+      )
+    } finally {
+      setDownloadingFormat(null)
+    }
+  }
 
   return (
     <Card className="@container/card min-w-0">
@@ -128,7 +275,7 @@ export function UsersCreatedChart({ users }: Props) {
           </span>
           <span className="@[540px]/card:hidden">Altas por fecha</span>
         </CardDescription>
-        <CardAction className="static col-start-1 row-start-auto justify-self-start @[767px]/card:col-start-2 @[767px]/card:row-start-1 @[767px]/card:justify-self-end">
+        <CardAction className="static col-start-1 row-start-auto flex flex-col gap-2 justify-self-start @[767px]/card:col-start-2 @[767px]/card:row-start-1 @[767px]/card:items-end @[767px]/card:justify-self-end">
           <ToggleGroup
             type="single"
             value={timeRange}
@@ -162,9 +309,36 @@ export function UsersCreatedChart({ users }: Props) {
               </SelectItem>
             </SelectContent>
           </Select>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={filteredUsers.length === 0 || downloadingFormat !== null}
+            onClick={() => handleDownload("csv")}
+            className="w-full @[767px]/card:w-auto"
+          >
+            <Download className="h-4 w-4" />
+            {downloadingFormat === "csv" ? "Descargando..." : "Descargar CSV"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={filteredUsers.length === 0 || downloadingFormat !== null}
+            onClick={() => handleDownload("pdf")}
+            className="w-full @[767px]/card:w-auto"
+          >
+            <FileText className="h-4 w-4" />
+            {downloadingFormat === "pdf" ? "Descargando..." : "Descargar PDF"}
+          </Button>
         </CardAction>
       </CardHeader>
-      <CardContent className="px-2 pt-4 sm:px-6 sm:pt-6">
+      <CardContent className="space-y-4 px-2 pt-4 sm:px-6 sm:pt-6">
+        {downloadError ? (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
+            {downloadError}
+          </div>
+        ) : null}
         <ChartContainer
           config={chartConfig}
           className="aspect-auto h-[250px] min-w-0 w-full"
@@ -222,9 +396,53 @@ export function UsersCreatedChart({ users }: Props) {
             />
           </AreaChart>
         </ChartContainer>
-        <p className="mt-4 text-sm text-muted-foreground">
-          {totalUsersInRange} usuarios creados en el rango seleccionado.
+        <p className="text-sm text-muted-foreground">
+          {totalUsersInRange} usuarios creados en {getRangeLabel(timeRange).toLowerCase()}.
         </p>
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_10rem]">
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Buscar por nombre"
+            aria-label="Buscar usuarios por nombre"
+          />
+          <Input
+            value={ageFilter}
+            onChange={(event) => setAgeFilter(event.target.value)}
+            placeholder="Edad"
+            aria-label="Filtrar usuarios por edad"
+            inputMode="numeric"
+          />
+        </div>
+        <Table
+          className="min-w-[520px]"
+          containerClassName="max-h-72 rounded-lg border bg-background"
+        >
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nombre</TableHead>
+              <TableHead>Edad</TableHead>
+              <TableHead>Fecha de unión</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredUsers.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={3} className="text-center text-muted-foreground">
+                  No hay usuarios en este rango
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredUsers.map((user) => (
+                <TableRow key={user._id}>
+                  <TableCell>{getUserName(user)}</TableCell>
+                  <TableCell>{getUserAge(user)}</TableCell>
+                  <TableCell>{formatDisplayDate(user.createdAt)}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </CardContent>
     </Card>
   )

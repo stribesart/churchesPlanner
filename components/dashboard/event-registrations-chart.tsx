@@ -1,8 +1,12 @@
 "use client"
 
 import * as React from "react"
+import { Download, FileText } from "lucide-react"
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts"
 
+import { downloadReport } from "@/lib/report-download"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import {
   Card,
   CardAction,
@@ -65,6 +69,7 @@ type Props = {
 }
 
 const allEventsValue = "all"
+const allPaymentStatusesValue = "all"
 
 const chartConfig = {
   registrados: {
@@ -161,6 +166,41 @@ function formatDate(value?: string) {
   })
 }
 
+function getRegistrationAmount(registration: EventRegistration) {
+  return typeof registration.paymentAmount === "number" &&
+    Number.isFinite(registration.paymentAmount)
+    ? registration.paymentAmount
+    : ""
+}
+
+function isPendingRegistration(registration: EventRegistration) {
+  return registration.paymentStatus === "pending" ||
+    registration.paymentPending === true
+}
+
+function filterRegistrations(
+  registrations: EventRegistration[],
+  search: string,
+  paymentStatus: string
+) {
+  const normalizedSearch = search.trim().toLowerCase()
+
+  return registrations.filter((registration) => {
+    const matchesSearch =
+      !normalizedSearch ||
+      [registration.name, registration.email, registration.contact]
+        .filter((value): value is string => typeof value === "string")
+        .some((value) => value.toLowerCase().includes(normalizedSearch))
+    const matchesPaymentStatus =
+      paymentStatus === allPaymentStatusesValue ||
+      (paymentStatus === "pending"
+        ? isPendingRegistration(registration)
+        : registration.paymentStatus === paymentStatus)
+
+    return matchesSearch && matchesPaymentStatus
+  })
+}
+
 function buildChartData(
   events: Event[],
   registrations: EventRegistration[],
@@ -200,6 +240,12 @@ export function EventRegistrationsChart({
 }: Props) {
   const [selectedEventId, setSelectedEventId] =
     React.useState(allEventsValue)
+  const [registrationSearch, setRegistrationSearch] = React.useState("")
+  const [paymentStatusFilter, setPaymentStatusFilter] =
+    React.useState(allPaymentStatusesValue)
+  const [downloadingFormat, setDownloadingFormat] =
+    React.useState<"csv" | "pdf" | null>(null)
+  const [downloadError, setDownloadError] = React.useState("")
 
   const chartData = React.useMemo(() => {
     const data = buildChartData(events, registrations, usersCount)
@@ -216,6 +262,18 @@ export function EventRegistrationsChart({
       (registration) => registration.eventId === selectedEventId
     )
   }, [registrations, selectedEventId])
+  const eventsById = React.useMemo(
+    () => new Map(events.map((event) => [event._id, event])),
+    [events]
+  )
+  const filteredRegistrations = React.useMemo(
+    () => filterRegistrations(
+      selectedRegistrations,
+      registrationSearch,
+      paymentStatusFilter
+    ),
+    [paymentStatusFilter, registrationSearch, selectedRegistrations]
+  )
 
   const selectedEvent = events.find((event) => event._id === selectedEventId)
   const totalRegistered = selectedRegistrations.length
@@ -240,9 +298,7 @@ export function EventRegistrationsChart({
     (registration) => registration.paymentStatus === "paid"
   ).length
   const pendingCount = selectedRegistrations.filter(
-    (registration) =>
-      registration.paymentStatus === "pending" ||
-      registration.paymentPending === true
+    (registration) => isPendingRegistration(registration)
   ).length
   const notRequiredCount = selectedRegistrations.filter(
     (registration) => registration.paymentStatus === "not_required"
@@ -273,6 +329,34 @@ export function EventRegistrationsChart({
           return registration.paymentStatus === "pending" ? total + amount : total
         }, 0)
       : pendingCount * paymentAmount
+  async function handleDownload(format: "csv" | "pdf") {
+    const params = new URLSearchParams({
+      type: "event-registrations",
+      format,
+      eventId: selectedEventId,
+      paymentStatus: paymentStatusFilter,
+    })
+
+    if (registrationSearch.trim()) {
+      params.set("search", registrationSearch.trim())
+    }
+
+    setDownloadingFormat(format)
+    setDownloadError("")
+
+    try {
+      await downloadReport(
+        `/api/reports?${params.toString()}`,
+        `reporte-registros-eventos.${format}`
+      )
+    } catch (error) {
+      setDownloadError(
+        error instanceof Error ? error.message : "No se pudo generar el reporte."
+      )
+    } finally {
+      setDownloadingFormat(null)
+    }
+  }
 
   return (
     <Card className="@container/card min-w-0">
@@ -281,7 +365,7 @@ export function EventRegistrationsChart({
         <CardDescription>
           Esperados, registrados, avance y pagos por evento.
         </CardDescription>
-        <CardAction className="static col-start-1 row-start-auto justify-self-start @[767px]/card:col-start-2 @[767px]/card:row-start-1 @[767px]/card:justify-self-end">
+        <CardAction className="static col-start-1 row-start-auto flex flex-col gap-2 justify-self-start @[767px]/card:col-start-2 @[767px]/card:row-start-1 @[767px]/card:items-end @[767px]/card:justify-self-end">
           <Select value={selectedEventId} onValueChange={setSelectedEventId}>
             <SelectTrigger
               className="w-64 max-w-full **:data-[slot=select-value]:block **:data-[slot=select-value]:truncate"
@@ -298,9 +382,36 @@ export function EventRegistrationsChart({
               ))}
             </SelectContent>
           </Select>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={filteredRegistrations.length === 0 || downloadingFormat !== null}
+            onClick={() => handleDownload("csv")}
+            className="w-full @[767px]/card:w-auto"
+          >
+            <Download className="h-4 w-4" />
+            {downloadingFormat === "csv" ? "Descargando..." : "Descargar CSV"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={filteredRegistrations.length === 0 || downloadingFormat !== null}
+            onClick={() => handleDownload("pdf")}
+            className="w-full @[767px]/card:w-auto"
+          >
+            <FileText className="h-4 w-4" />
+            {downloadingFormat === "pdf" ? "Descargando..." : "Descargar PDF"}
+          </Button>
         </CardAction>
       </CardHeader>
       <CardContent className="space-y-4 px-2 pt-4 sm:px-6 sm:pt-6">
+        {downloadError ? (
+          <div className="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm font-medium text-destructive">
+            {downloadError}
+          </div>
+        ) : null}
         <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-7">
           <Metric
             label="Esperados"
@@ -401,49 +512,85 @@ export function EventRegistrationsChart({
               </div>
             </div>
 
-            <Table
-              className="min-w-[760px]"
-              containerClassName="max-h-72 rounded-lg border bg-background"
-            >
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Correo</TableHead>
-                  <TableHead>Contacto</TableHead>
-                  <TableHead>Pago</TableHead>
-                  <TableHead>Método</TableHead>
-                  <TableHead>Registro</TableHead>
-                  <TableHead>Pagado</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {selectedRegistrations.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground">
-                      No hay registros para este evento
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  selectedRegistrations.map((registration) => (
-                    <TableRow key={registration._id}>
-                      <TableCell>{registration.name || "-"}</TableCell>
-                      <TableCell>{registration.email || "-"}</TableCell>
-                      <TableCell>{registration.contact || "-"}</TableCell>
-                      <TableCell>
-                        {formatPaymentStatus(registration.paymentStatus)}
-                      </TableCell>
-                      <TableCell>
-                        {formatPaymentMethod(registration.paymentMethod)}
-                      </TableCell>
-                      <TableCell>{formatDate(registration.createdAt)}</TableCell>
-                      <TableCell>{formatDate(registration.paidAt)}</TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
           </div>
         ) : null}
+
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_14rem]">
+          <Input
+            value={registrationSearch}
+            onChange={(event) => setRegistrationSearch(event.target.value)}
+            placeholder="Buscar por nombre, correo o contacto"
+            aria-label="Buscar registros por nombre, correo o contacto"
+          />
+          <Select
+            value={paymentStatusFilter}
+            onValueChange={setPaymentStatusFilter}
+          >
+            <SelectTrigger aria-label="Filtrar registros por estado de pago">
+              <SelectValue placeholder="Todos los pagos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={allPaymentStatusesValue}>Todos los pagos</SelectItem>
+              <SelectItem value="paid">Pagados</SelectItem>
+              <SelectItem value="pending">Pendientes</SelectItem>
+              <SelectItem value="not_required">No requieren</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <Table
+          className="min-w-[960px]"
+          containerClassName="max-h-72 rounded-lg border bg-background"
+        >
+          <TableHeader>
+            <TableRow>
+              <TableHead>Evento</TableHead>
+              <TableHead>Nombre</TableHead>
+              <TableHead>Correo</TableHead>
+              <TableHead>Contacto</TableHead>
+              <TableHead>Pago</TableHead>
+              <TableHead>Método</TableHead>
+              <TableHead>Monto</TableHead>
+              <TableHead>Registro</TableHead>
+              <TableHead>Pagado</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredRegistrations.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={9} className="text-center text-muted-foreground">
+                  No hay registros para mostrar
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredRegistrations.map((registration) => (
+                <TableRow key={registration._id}>
+                  <TableCell>
+                    {getEventName(eventsById.get(registration.eventId) || {
+                      _id: registration.eventId,
+                    })}
+                  </TableCell>
+                  <TableCell>{registration.name || "-"}</TableCell>
+                  <TableCell>{registration.email || "-"}</TableCell>
+                  <TableCell>{registration.contact || "-"}</TableCell>
+                  <TableCell>
+                    {formatPaymentStatus(registration.paymentStatus)}
+                  </TableCell>
+                  <TableCell>
+                    {formatPaymentMethod(registration.paymentMethod)}
+                  </TableCell>
+                  <TableCell>
+                    {typeof getRegistrationAmount(registration) === "number"
+                      ? formatMoney(getRegistrationAmount(registration) as number)
+                      : "-"}
+                  </TableCell>
+                  <TableCell>{formatDate(registration.createdAt)}</TableCell>
+                  <TableCell>{formatDate(registration.paidAt)}</TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </CardContent>
     </Card>
   )
