@@ -281,7 +281,7 @@ export default function OfferingsPage() {
         <span className="font-semibold">{formatMoney(totalAmount)}</span>
       </div>
 
-      <div className="mt-6 rounded-lg border bg-white">
+      <div className="mt-6 rounded-lg border bg-card text-card-foreground">
         <Table className="min-w-[900px]" containerClassName="max-h-[60vh]">
           <TableHeader>
             <TableRow>

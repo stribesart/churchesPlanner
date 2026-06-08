@@ -82,7 +82,7 @@ export default function DashboardLayout({ children }: Props) {
       <SidebarInset>
         <Topbar user={user} />
 
-        <main className="p-6 bg-gray-50 flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto bg-background p-4 pb-24 sm:p-6 md:pb-6">
           {children}
         </main>
 

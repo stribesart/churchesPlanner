@@ -1,11 +1,10 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import {
-  Bell,
-  CreditCard,
   LogOut,
   MoreVertical,
-  UserCircle,
+  Palette,
 } from "lucide-react"
 
 import {
@@ -19,6 +18,8 @@ import {
   DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -38,6 +39,57 @@ type SidebarUserProps = {
   } | null
 }
 
+const THEME_STORAGE_KEY = "churches-planner-theme"
+
+const colorThemes = [
+  {
+    value: "default",
+    label: "Neutral",
+    color: "oklch(0.205 0 0)",
+  },
+  {
+    value: "cobalt",
+    label: "Cobalto",
+    color: "oklch(0.546 0.245 262.881)",
+  },
+  {
+    value: "indigo",
+    label: "Índigo",
+    color: "oklch(0.511 0.262 276.966)",
+  },
+  {
+    value: "violet",
+    label: "Violeta",
+    color: "oklch(0.541 0.281 293.009)",
+  },
+  {
+    value: "coral",
+    label: "Coral",
+    color: "oklch(0.645 0.246 16.439)",
+  },
+  {
+    value: "copper",
+    label: "Cobre",
+    color: "oklch(0.58 0.15 45)",
+  },
+  {
+    value: "emerald",
+    label: "Esmeralda",
+    color: "oklch(0.47 0.14 166)",
+  },
+] as const
+
+function normalizeTheme(value: string | null) {
+  if (value === "blue") return "cobalt"
+  if (value === "green") return "emerald"
+  if (value === "rose") return "coral"
+  if (value === "amber") return "copper"
+
+  return colorThemes.some((item) => item.value === value)
+    ? (value as (typeof colorThemes)[number]["value"])
+    : "default"
+}
+
 function getInitials(name?: string | null) {
   if (!name) {
     return "U"
@@ -55,9 +107,30 @@ function getInitials(name?: string | null) {
 export function SidebarUser({ user }: SidebarUserProps) {
   const { isMobile } = useSidebar()
   const initials = getInitials(user?.name)
+  const [theme, setTheme] = useState<(typeof colorThemes)[number]["value"]>(
+    () => {
+      if (typeof window === "undefined") return "default"
+
+      const savedTheme = window.localStorage.getItem(THEME_STORAGE_KEY)
+
+      return normalizeTheme(savedTheme)
+    }
+  )
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme
+  }, [theme])
 
   const handleLogout = () => {
     window.location.href = "/login"
+  }
+
+  const handleThemeChange = (nextTheme: string) => {
+    const normalizedTheme = normalizeTheme(nextTheme)
+
+    setTheme(normalizedTheme)
+    document.documentElement.dataset.theme = normalizedTheme
+    window.localStorage.setItem(THEME_STORAGE_KEY, normalizedTheme)
   }
 
   return (
@@ -115,18 +188,24 @@ export function SidebarUser({ user }: SidebarUserProps) {
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <UserCircle />
-                Cuenta
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <CreditCard />
-                Facturación
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Bell />
-                Notificaciones
-              </DropdownMenuItem>
+              <DropdownMenuLabel className="flex items-center gap-1.5 px-1.5">
+                <Palette className="h-3.5 w-3.5" />
+                Colores
+              </DropdownMenuLabel>
+              <DropdownMenuRadioGroup
+                value={theme}
+                onValueChange={handleThemeChange}
+              >
+                {colorThemes.map((item) => (
+                  <DropdownMenuRadioItem key={item.value} value={item.value}>
+                    <span
+                      className="size-3 rounded-full ring-1 ring-foreground/15"
+                      style={{ backgroundColor: item.color }}
+                    />
+                    {item.label}
+                  </DropdownMenuRadioItem>
+                ))}
+              </DropdownMenuRadioGroup>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem variant="destructive" onSelect={handleLogout}>

@@ -219,7 +219,7 @@ export default function AnnouncementsPage() {
         + Nuevo anuncio
       </Button>
 
-      <div className="mt-4 mb-4 rounded-lg border bg-white p-4">
+      <div className="theme-surface mt-4 mb-4 rounded-lg border p-4">
         <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
           <Filter className="h-4 w-4" />
           Filtros
@@ -257,7 +257,7 @@ export default function AnnouncementsPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border mt-4">
+      <div className="mt-4 rounded-lg border bg-card text-card-foreground">
         <Table containerClassName="max-h-[60vh]">
           <TableHeader>
             <TableRow>
@@ -274,7 +274,7 @@ export default function AnnouncementsPage() {
               <TableSkeletonRows columns={5} rows={6} />
             ) : filteredAnnouncements.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center text-gray-500">
+                <TableCell colSpan={5} className="text-center text-muted-foreground">
                   No hay anuncios que coincidan con los filtros
                 </TableCell>
               </TableRow>
@@ -328,7 +328,7 @@ export default function AnnouncementsPage() {
                                   </AlertDialogTitle>
                                 </AlertDialogHeader>
 
-                                <p className="text-sm text-gray-500">
+                                <p className="text-sm text-muted-foreground">
                                   Esta acción no se puede deshacer.
                                 </p>
 

@@ -140,7 +140,7 @@ export default function MinisteriesPage() {
         + Nuevo ministerio
       </Button>
 
-      <div className="bg-white rounded-lg border mt-4">
+      <div className="mt-4 rounded-lg border bg-card text-card-foreground">
         <Table containerClassName="max-h-[60vh]">
           <TableHeader>
             <TableRow>
@@ -200,7 +200,7 @@ export default function MinisteriesPage() {
                                 </AlertDialogTitle>
                               </AlertDialogHeader>
 
-                              <p className="text-sm text-gray-500">
+                              <p className="text-sm text-muted-foreground">
                                 Esta acción no se puede deshacer.
                               </p>
 

@@ -328,7 +328,7 @@ export default function RegisterPage() {
                       onChange={(e) => setAdminPhone(e.target.value)}
                     />
                     <FieldDescription>
-                      Se usará para confirmar la cuenta por SMS o WhatsApp.
+                      Se usará como dato de contacto de la cuenta.
                     </FieldDescription>
                   </Field>
 

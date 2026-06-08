@@ -34,8 +34,8 @@ export default function Dashboard({ role, data }: Props) {
   const dashboardRole = normalizeDashboardRole(role)
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
-      <div className="mx-auto max-w-7xl px-6 py-10 text-slate-900 sm:py-12 lg:py-16">
+    <div className="min-h-screen bg-background">
+      <div className="mx-auto max-w-7xl px-4 py-6 text-foreground sm:px-6 sm:py-10 lg:py-12">
         {dashboardRole === "admin" && <AdminDashboard data={data} />}
         {dashboardRole === "lider" && <LeaderDashboard data={data} />}
         {dashboardRole === "miembro" && <MemberDashboard data={data} />}

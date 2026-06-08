@@ -289,7 +289,7 @@ export default function UsersPage() {
         </Button>
       </div>
 
-      <div className="bg-white rounded-lg border mt-4">
+      <div className="mt-4 rounded-lg border bg-card text-card-foreground">
         <Table containerClassName="max-h-[60vh]">
           <TableHeader>
             <TableRow>

@@ -229,7 +229,7 @@ export default function EventsPage() {
         </div>
       ) : null}
 
-      <div className="mt-4 mb-4 rounded-lg border bg-white p-4">
+      <div className="theme-surface mt-4 mb-4 rounded-lg border p-4">
         <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
           <Filter className="h-4 w-4" />
           Filtros
@@ -267,7 +267,7 @@ export default function EventsPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border mt-4">
+      <div className="mt-4 rounded-lg border bg-card text-card-foreground">
         <Table containerClassName="max-h-[60vh]">
           <TableHeader>
             <TableRow>
@@ -288,7 +288,7 @@ export default function EventsPage() {
               <TableSkeletonRows columns={9} rows={6} />
             ) : filteredEvents.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center text-gray-500">
+                <TableCell colSpan={9} className="text-center text-muted-foreground">
                   No hay eventos que coincidan con los filtros
                 </TableCell>
               </TableRow>
@@ -367,7 +367,7 @@ export default function EventsPage() {
                                   </AlertDialogTitle>
                                 </AlertDialogHeader>
 
-                                <p className="text-sm text-gray-500">
+                                <p className="text-sm text-muted-foreground">
                                   Esta acción no se puede deshacer.
                                 </p>
 
@@ -512,7 +512,7 @@ function EventRegistrationsDialog({
               <TableSkeletonRows columns={7} rows={5} />
             ) : registrations.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={7} className="text-center text-gray-500">
+                <TableCell colSpan={7} className="text-center text-muted-foreground">
                   No hay registros para este evento
                 </TableCell>
               </TableRow>

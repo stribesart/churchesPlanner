@@ -8,30 +8,30 @@ type Props = {
 
 export default function EventList({ events }: Props) {
   return (
-    <div className="rounded-2xl border bg-white p-6 shadow-sm">
+    <div className="theme-surface rounded-2xl border p-6 shadow-sm">
       <div className="mb-6 flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
+        <div className="theme-surface-muted flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border text-primary">
           <CalendarDays className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="mb-1 text-xl font-bold text-slate-900">Próximos Eventos</h2>
-          <p className="text-sm text-slate-600">Actividades programadas</p>
+          <h2 className="mb-1 text-xl font-bold text-[var(--theme-card-foreground)]">Próximos Eventos</h2>
+          <p className="text-sm text-[var(--theme-card-muted)]">Actividades programadas</p>
         </div>
       </div>
 
       {events?.length === 0 ? (
-        <div className="rounded-2xl bg-slate-50 py-8 text-center">
-          <p className="text-slate-600">No hay eventos próximos</p>
+        <div className="theme-surface-muted rounded-2xl border py-8 text-center">
+          <p>No hay eventos próximos</p>
         </div>
       ) : (
         <ul className="space-y-3">
           {events.map((event) => (
             <li
               key={event.id}
-              className="rounded-xl border border-slate-100 p-4 transition-colors hover:border-blue-100 hover:bg-blue-50"
+              className="theme-surface-muted rounded-xl border p-4 transition-colors hover:brightness-95"
             >
-              <p className="font-semibold text-slate-900">{event.title}</p>
-              <p className="mt-1 text-sm font-medium text-blue-700">{event.date}</p>
+              <p className="font-semibold">{event.title}</p>
+              <p className="mt-1 text-sm font-medium text-primary">{event.date}</p>
             </li>
           ))}
         </ul>

@@ -290,7 +290,7 @@ export default function InventoryPage() {
         + Nuevo recurso
       </Button>
 
-      <div className="mt-4 mb-4 rounded-lg border bg-white p-4">
+      <div className="theme-surface mt-4 mb-4 rounded-lg border p-4">
         <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
           <Filter className="h-4 w-4" />
           Filtros
@@ -347,7 +347,7 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      <div className="mt-4 rounded-lg border bg-white">
+      <div className="mt-4 rounded-lg border bg-card text-card-foreground">
         <Table containerClassName="max-h-[60vh]">
           <TableHeader>
             <TableRow>

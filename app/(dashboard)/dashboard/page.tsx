@@ -620,8 +620,8 @@ export default function DashboardPage() {
 
         {canSeeAnalytics ? (
           <TabsContent value="administration" className="space-y-6">
-            <section className="grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card *:data-[slot=card]:shadow-xs md:grid-cols-2 xl:grid-cols-4 dark:*:data-[slot=card]:bg-card">
-              <Card className="@container/card">
+            <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <Card className="@container/card theme-surface shadow-sm">
                 <CardHeader>
                   <CardDescription>Usuarios registrados</CardDescription>
                   <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
@@ -644,7 +644,7 @@ export default function DashboardPage() {
                 </CardFooter>
               </Card>
 
-              <Card className="@container/card">
+              <Card className="@container/card theme-surface shadow-sm">
                 <CardHeader>
                   <CardDescription>Próximos eventos</CardDescription>
                   <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
@@ -667,7 +667,7 @@ export default function DashboardPage() {
                 </CardFooter>
               </Card>
 
-              <Card className="@container/card">
+              <Card className="@container/card theme-surface shadow-sm">
                 <CardHeader>
                   <CardDescription>Anuncios</CardDescription>
                   <CardTitle className="text-2xl font-semibold tabular-nums @[250px]/card:text-3xl">
@@ -690,7 +690,7 @@ export default function DashboardPage() {
                 </CardFooter>
               </Card>
 
-              <Card className="@container/card">
+              <Card className="@container/card theme-surface shadow-sm">
                 <CardHeader>
                   <CardDescription>Acceso actual</CardDescription>
                   <CardTitle className="text-2xl font-semibold @[250px]/card:text-3xl">

@@ -17,25 +17,25 @@ type Props = {
 
 export default function AdminDashboard({ data }: Props) {
   return (
-    <div className="space-y-8">
-      <div className="rounded-3xl border bg-white p-6 shadow-xl sm:p-8">
+    <div className="space-y-6 sm:space-y-8">
+      <div className="theme-surface rounded-2xl border p-5 shadow-sm sm:p-8">
         <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-          <div>
-            <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700">
+          <div className="min-w-0">
+            <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
 
             </p>
-            <TypographyH1 className="text-left text-slate-900">
+            <TypographyH1 className="text-left text-2xl text-[var(--theme-card-foreground)] sm:text-4xl">
               Dashboard General
             </TypographyH1>
-            <TypographyP className="max-w-2xl text-slate-600">
+            <TypographyP className="max-w-2xl text-base text-[var(--theme-card-muted)] sm:text-xl">
               Bienvenido a tu panel de administración.
             </TypographyP>
           </div>
-          <div className="rounded-2xl bg-blue-700 px-5 py-4 text-white shadow-sm">
-            <TypographySmall className="block text-blue-100">
+          <div className="rounded-2xl bg-primary px-5 py-4 text-primary-foreground shadow-sm">
+            <TypographySmall className="block text-primary-foreground/80">
               Asistencia promedio
             </TypographySmall>
-            <p className="mt-1 text-3xl font-bold">{data.attendance}%</p>
+            <p className="mt-1 text-2xl font-bold sm:text-3xl">{data.attendance}%</p>
           </div>
         </div>
       </div>
