@@ -613,9 +613,9 @@ export default function DashboardPage() {
       >
         <TabsList className="inline-grid w-full grid-flow-col auto-cols-fr sm:w-fit sm:auto-cols-auto">
           {canSeeAnalytics ? (
-            <TabsTrigger value="administration">Administración</TabsTrigger>
+            <TabsTrigger value="administration">Panel administrativo</TabsTrigger>
           ) : null}
-          <TabsTrigger value="community">Comunidad</TabsTrigger>
+          <TabsTrigger value="community">Panel general</TabsTrigger>
         </TabsList>
 
         {canSeeAnalytics ? (
@@ -721,7 +721,7 @@ export default function DashboardPage() {
             >
               <TabsList className="w-full sm:w-fit">
                 <TabsTrigger value="users">Usuarios</TabsTrigger>
-                <TabsTrigger value="offerings">Ofrendas</TabsTrigger>
+                <TabsTrigger value="offerings">Aportaciones</TabsTrigger>
                 <TabsTrigger value="registrations">Registros</TabsTrigger>
               </TabsList>
               <TabsContent value="users">

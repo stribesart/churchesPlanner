@@ -433,7 +433,7 @@ export default function EventModal({
                 <Input
                   type="number"
                   min="0"
-                  step="0.01"
+                  step="100"
                   value={paymentAmount}
                   onChange={(e) => {
                     setPaymentAmount(e.target.value)

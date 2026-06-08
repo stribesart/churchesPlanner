@@ -122,7 +122,7 @@ export function SidebarUser({ user }: SidebarUserProps) {
   }, [theme])
 
   const handleLogout = () => {
-    window.location.href = "/login"
+    window.location.href = "/"
   }
 
   const handleThemeChange = (nextTheme: string) => {

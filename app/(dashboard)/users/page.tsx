@@ -238,7 +238,7 @@ export default function UsersPage() {
       />
 
       <TypographyH1 className="mb-6 text-left">
-        Miembros
+        Usuarios
       </TypographyH1>
 
       {isLeader ? (

@@ -21,12 +21,12 @@ export default function LeaderDashboard({ data }: Props) {
           Mi Grupo
         </TypographyH1>
         <TypographyP className="max-w-2xl text-base text-[var(--theme-card-muted)] sm:text-xl">
-          Administra tu grupo y sus miembros.
+          Administra tu grupo y sus usuarios.
         </TypographyP>
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <StatsCard title="Miembros en mi grupo" value={data.groupMembers} icon={UsersRound} />
+        <StatsCard title="Usuarios en mi grupo" value={data.groupMembers} icon={UsersRound} />
         <StatsCard title="Asistencia promedio" value={`${data.attendance}%`} icon={TrendingUp} />
       </div>
 

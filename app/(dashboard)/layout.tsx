@@ -48,11 +48,17 @@ export default function DashboardLayout({ children }: Props) {
   }, [])
 
   useEffect(() => {
+    const hiddenRoutes = ["/settings", "/givings"]
     const restrictedForLeader = ["/ministeries", "/offerings", "/settings"]
     const normalizedRole = user?.role
       ?.toLowerCase()
       .normalize("NFD")
       .replace(/[\u0300-\u036f]/g, "")
+
+    if (hiddenRoutes.some((path) => pathname.startsWith(path))) {
+      window.location.href = "/dashboard"
+      return
+    }
 
     if (
       normalizedRole === "lider" &&

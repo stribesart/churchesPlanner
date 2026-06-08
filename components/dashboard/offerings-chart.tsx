@@ -60,7 +60,7 @@ type ChartPoint = {
 
 const chartConfig = {
   amount: {
-    label: "Ofrendas",
+    label: "Aportaciones",
     color: "var(--chart-1)",
   },
 } satisfies ChartConfig
@@ -245,7 +245,7 @@ export function OfferingsChart({ offerings }: Props) {
     try {
       await downloadReport(
         `/api/reports?${params.toString()}`,
-        `reporte-ofrendas.${format}`
+        `reporte-aportaciones.${format}`
       )
     } catch (error) {
       setDownloadError(
@@ -259,12 +259,12 @@ export function OfferingsChart({ offerings }: Props) {
   return (
     <Card className="@container/card min-w-0">
       <CardHeader className="gap-3">
-        <CardTitle>Ofrendas registradas</CardTitle>
+        <CardTitle>Aportaciones registradas</CardTitle>
         <CardDescription>
           <span className="hidden @[540px]/card:block">
             Entradas financieras en el rango seleccionado
           </span>
-          <span className="@[540px]/card:hidden">Ofrendas por fecha</span>
+          <span className="@[540px]/card:hidden">Aportaciones por fecha</span>
         </CardDescription>
         <CardAction className="static col-start-1 row-start-auto flex flex-col gap-2 justify-self-start @[767px]/card:col-start-2 @[767px]/card:row-start-1 @[767px]/card:items-end @[767px]/card:justify-self-end">
           <ToggleGroup
@@ -395,14 +395,14 @@ export function OfferingsChart({ offerings }: Props) {
             value={minAmount}
             onChange={(event) => setMinAmount(event.target.value)}
             placeholder="Monto mínimo"
-            aria-label="Filtrar ofrendas por monto mínimo"
+            aria-label="Filtrar aportaciones por monto mínimo"
             inputMode="decimal"
           />
           <Input
             value={maxAmount}
             onChange={(event) => setMaxAmount(event.target.value)}
             placeholder="Monto máximo"
-            aria-label="Filtrar ofrendas por monto máximo"
+            aria-label="Filtrar aportaciones por monto máximo"
             inputMode="decimal"
           />
         </div>
@@ -421,7 +421,7 @@ export function OfferingsChart({ offerings }: Props) {
             {filteredOfferings.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={3} className="text-center text-muted-foreground">
-                  No hay ofrendas en este rango
+                  No hay aportaciones en este rango
                 </TableCell>
               </TableRow>
             ) : (

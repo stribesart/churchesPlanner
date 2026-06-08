@@ -25,7 +25,7 @@ export default function AdminDashboard({ data }: Props) {
 
             </p>
             <TypographyH1 className="text-left text-2xl text-[var(--theme-card-foreground)] sm:text-4xl">
-              Dashboard General
+              Panel administrativo
             </TypographyH1>
             <TypographyP className="max-w-2xl text-base text-[var(--theme-card-muted)] sm:text-xl">
               Bienvenido a tu panel de administración.
@@ -41,7 +41,7 @@ export default function AdminDashboard({ data }: Props) {
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        <StatsCard title="Miembros Totales" value={data.totalMembers} icon={Users} />
+        <StatsCard title="Usuarios totales" value={data.totalMembers} icon={Users} />
         <StatsCard title="Nuevos este mes" value={data.newMembers} icon={Sparkles} />
         <StatsCard title="Líderes Activos" value={data.totalLeaders} icon={Target} />
       </div>

@@ -1,8 +1,9 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import { Pencil, Trash2 } from "lucide-react"
+import { type KeyboardEvent, useEffect, useMemo, useState } from "react"
+import { Download, FileText, Filter, Pencil, Trash2 } from "lucide-react"
 
+import { downloadReport } from "@/lib/report-download"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -90,8 +91,6 @@ type Event = {
   date?: string
 }
 
-const noneValue = "__none"
-
 const typeLabels: Record<OfferingType, string> = {
   voluntary: "Voluntaria",
   event: "Por evento",
@@ -107,12 +106,6 @@ const sourceLabels: Record<OfferingSource, string> = {
   self_service: "Usuario",
 }
 
-const adminSourceLabels: Partial<Record<OfferingSource, string>> = {
-  registered_user: "Usuario registrado",
-  anonymous: "Anónima",
-  manual: "Manual",
-}
-
 const paymentMethodLabels: Record<PaymentMethod, string> = {
   cash: "Efectivo",
   transfer: "Transferencia",
@@ -126,11 +119,43 @@ const paymentStatusLabels: Record<PaymentStatus, string> = {
   failed: "Fallida",
 }
 
+const formTypeOptions: OfferingType[] = ["tithe", "voluntary"]
+const formPaymentMethodOptions: PaymentMethod[] = ["cash", "transfer"]
+
 function formatMoney(amount: number, currency = "MXN") {
   return new Intl.NumberFormat("es-MX", {
     style: "currency",
     currency,
   }).format(amount)
+}
+
+function getAmountNumber(value: string) {
+  const digits = value.replace(/[^\d]/g, "")
+
+  return digits ? Number(digits) : 0
+}
+
+function formatAmountInput(value: string | number) {
+  const digits = String(value).replace(/[^\d]/g, "")
+
+  if (!digits) return ""
+
+  return Number(digits).toLocaleString("en-US")
+}
+
+function handleAmountStep(
+  event: KeyboardEvent<HTMLInputElement>,
+  value: string,
+  onChange: (value: string) => void
+) {
+  if (event.key !== "ArrowUp" && event.key !== "ArrowDown") return
+
+  event.preventDefault()
+
+  const direction = event.key === "ArrowUp" ? 100 : -100
+  const nextValue = Math.max(0, getAmountNumber(value) + direction)
+
+  onChange(formatAmountInput(nextValue))
 }
 
 function formatDate(value?: string) {
@@ -170,6 +195,10 @@ export default function OfferingsPage() {
   const [loading, setLoading] = useState(true)
   const [pageError, setPageError] = useState("")
   const [submitting, setSubmitting] = useState(false)
+  const [minAmount, setMinAmount] = useState("")
+  const [maxAmount, setMaxAmount] = useState("")
+  const [downloadingFormat, setDownloadingFormat] =
+    useState<"csv" | "pdf" | null>(null)
 
   async function fetchOfferingsPage() {
     setPageError("")
@@ -182,7 +211,7 @@ export default function OfferingsPage() {
 
     if (!offeringsRes.ok) {
       const data = await offeringsRes.json()
-      setPageError(data?.message || "No se pudieron cargar las ofrendas")
+      setPageError(data?.message || "No se pudieron cargar las aportaciones")
       setOfferings([])
       return
     }
@@ -246,9 +275,49 @@ export default function OfferingsPage() {
     }
   }
 
+  const filteredOfferings = useMemo(() => {
+    const min = minAmount.trim() ? getAmountNumber(minAmount) : null
+    const max = maxAmount.trim() ? getAmountNumber(maxAmount) : null
+
+    return offerings.filter((offering) => {
+      const matchesMin =
+        min === null || Number.isNaN(min) || offering.amount >= min
+      const matchesMax =
+        max === null || Number.isNaN(max) || offering.amount <= max
+
+      return matchesMin && matchesMax
+    })
+  }, [maxAmount, minAmount, offerings])
   const totalAmount = useMemo(() => {
-    return offerings.reduce((total, offering) => total + offering.amount, 0)
-  }, [offerings])
+    return filteredOfferings.reduce((total, offering) => total + offering.amount, 0)
+  }, [filteredOfferings])
+  const hasFiltersToClear = Boolean(minAmount) || Boolean(maxAmount)
+
+  async function handleDownloadReport(format: "csv" | "pdf") {
+    const params = new URLSearchParams({
+      type: "offerings",
+      format,
+    })
+
+    if (minAmount.trim()) params.set("minAmount", String(getAmountNumber(minAmount)))
+    if (maxAmount.trim()) params.set("maxAmount", String(getAmountNumber(maxAmount)))
+
+    setDownloadingFormat(format)
+    setPageError("")
+
+    try {
+      await downloadReport(
+        `/api/reports?${params.toString()}`,
+        `reporte-aportaciones.${format}`
+      )
+    } catch (error) {
+      setPageError(
+        error instanceof Error ? error.message : "No se pudo generar el reporte."
+      )
+    } finally {
+      setDownloadingFormat(null)
+    }
+  }
 
   return (
     <div>
@@ -258,27 +327,119 @@ export default function OfferingsPage() {
         className="fixed z-[70]"
       />
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <TypographyH1 className="text-left">Ofrendas</TypographyH1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Registro administrativo de entradas financieras.
-          </p>
-        </div>
+      <div>
+        <TypographyH1 className="text-left">Aportaciones</TypographyH1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Registro administrativo de entradas financieras.
+        </p>
+      </div>
+
+      <Button
+        onClick={() => {
+          setSelectedOffering(null)
+          setOpen(true)
+        }}
+        disabled={submitting}
+        className="mt-4"
+      >
+        + Nueva aportación
+      </Button>
+
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
         <Button
-          onClick={() => {
-            setSelectedOffering(null)
-            setOpen(true)
-          }}
-          disabled={submitting}
+          type="button"
+          variant="outline"
+          disabled={loading || filteredOfferings.length === 0 || downloadingFormat !== null}
+          onClick={() => handleDownloadReport("csv")}
+          className="w-full sm:w-auto"
         >
-          + Nueva ofrenda
+          <Download className="h-4 w-4" />
+          {downloadingFormat === "csv" ? "Descargando..." : "Descargar CSV"}
+        </Button>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={loading || filteredOfferings.length === 0 || downloadingFormat !== null}
+          onClick={() => handleDownloadReport("pdf")}
+          className="w-full sm:w-auto"
+        >
+          <FileText className="h-4 w-4" />
+          {downloadingFormat === "pdf" ? "Descargando..." : "Descargar PDF"}
         </Button>
       </div>
 
-      <div className="mt-4 rounded-lg border bg-muted/40 px-4 py-3 text-sm">
-        Total registrado:{" "}
-        <span className="font-semibold">{formatMoney(totalAmount)}</span>
+      <div className="theme-surface mt-4 mb-4 rounded-lg border p-4">
+        <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
+          <Filter className="h-4 w-4" />
+          Filtros
+        </div>
+        <div className="flex flex-col gap-4 md:flex-row md:items-end">
+          <div className="w-full md:max-w-56">
+            <FieldLabel htmlFor="filter-min-amount">Monto mínimo</FieldLabel>
+            <div className="relative">
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground"
+              >
+                $
+              </span>
+              <Input
+                id="filter-min-amount"
+                inputMode="numeric"
+                placeholder="0"
+                value={minAmount}
+                onChange={(event) =>
+                  setMinAmount(formatAmountInput(event.target.value))
+                }
+                onKeyDown={(event) =>
+                  handleAmountStep(event, minAmount, setMinAmount)
+                }
+                className="pl-7"
+              />
+            </div>
+          </div>
+          <div className="w-full md:max-w-56">
+            <FieldLabel htmlFor="filter-max-amount">Monto máximo</FieldLabel>
+            <div className="relative">
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground"
+              >
+                $
+              </span>
+              <Input
+                id="filter-max-amount"
+                inputMode="numeric"
+                placeholder="0"
+                value={maxAmount}
+                onChange={(event) =>
+                  setMaxAmount(formatAmountInput(event.target.value))
+                }
+                onKeyDown={(event) =>
+                  handleAmountStep(event, maxAmount, setMaxAmount)
+                }
+                className="pl-7"
+              />
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setMinAmount("")
+              setMaxAmount("")
+            }}
+            className="w-full md:w-auto"
+            disabled={!hasFiltersToClear}
+          >
+            Limpiar filtros
+          </Button>
+          <div className="text-sm text-muted-foreground md:ml-auto">
+            Total mostrado:{" "}
+            <span className="font-semibold text-foreground">
+              {formatMoney(totalAmount)}
+            </span>
+          </div>
+        </div>
       </div>
 
       <div className="mt-6 rounded-lg border bg-card text-card-foreground">
@@ -306,14 +467,14 @@ export default function OfferingsPage() {
               </TableRow>
             ) : loading ? (
               <TableSkeletonRows columns={10} rows={6} />
-            ) : offerings.length === 0 ? (
+            ) : filteredOfferings.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={10} className="text-center text-muted-foreground">
-                  Todavía no hay ofrendas registradas.
+                  Todavía no hay aportaciones registradas.
                 </TableCell>
               </TableRow>
             ) : (
-              offerings.map((offering) => (
+              filteredOfferings.map((offering) => (
                 <TableRow key={offering._id}>
                   <TableCell className="font-medium">
                     {formatMoney(offering.amount, offering.currency)}
@@ -375,7 +536,7 @@ export default function OfferingsPage() {
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>¿Eliminar ofrenda?</AlertDialogTitle>
+                            <AlertDialogTitle>¿Eliminar aportación?</AlertDialogTitle>
                           </AlertDialogHeader>
                           <p className="text-sm text-muted-foreground">
                             Esta acción no se puede deshacer.
@@ -404,8 +565,6 @@ export default function OfferingsPage() {
         open={open}
         onOpenChange={setOpen}
         offering={selectedOffering}
-        users={users}
-        events={events}
         onSuccess={fetchOfferingsPage}
         submitting={submitting}
         onSubmittingChange={setSubmitting}
@@ -418,8 +577,6 @@ function OfferingDialog({
   open,
   onOpenChange,
   offering,
-  users,
-  events,
   onSuccess,
   submitting,
   onSubmittingChange,
@@ -427,8 +584,6 @@ function OfferingDialog({
   open: boolean
   onOpenChange: (open: boolean) => void
   offering: Offering | null
-  users: User[]
-  events: Event[]
   onSuccess: () => Promise<void> | void
   submitting: boolean
   onSubmittingChange: (submitting: boolean) => void
@@ -444,8 +599,6 @@ function OfferingDialog({
       <OfferingForm
         key={`${offering?._id || "new"}-${open ? "open" : "closed"}`}
         offering={offering}
-        users={users}
-        events={events}
         onOpenChange={onOpenChange}
         onSuccess={onSuccess}
         submitting={submitting}
@@ -457,30 +610,31 @@ function OfferingDialog({
 
 function OfferingForm({
   offering,
-  users,
-  events,
   onOpenChange,
   onSuccess,
   submitting,
   onSubmittingChange,
 }: {
   offering: Offering | null
-  users: User[]
-  events: Event[]
   onOpenChange: (open: boolean) => void
   onSuccess: () => Promise<void> | void
   submitting: boolean
   onSubmittingChange: (submitting: boolean) => void
 }) {
-  const [amount, setAmount] = useState(String(offering?.amount ?? ""))
-  const [currency, setCurrency] = useState(offering?.currency || "MXN")
-  const [type, setType] = useState<OfferingType>(offering?.type || "voluntary")
-  const [source, setSource] = useState<OfferingSource>(offering?.source || "manual")
-  const [eventId, setEventId] = useState(offering?.eventId || noneValue)
-  const [userId, setUserId] = useState(offering?.userId || noneValue)
+  const [amount, setAmount] = useState(
+    offering?.amount ? formatAmountInput(offering.amount) : ""
+  )
+  const [type, setType] = useState<OfferingType>(
+    offering?.type && formTypeOptions.includes(offering.type)
+      ? offering.type
+      : "voluntary"
+  )
   const [donorName, setDonorName] = useState(offering?.donorName || "")
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(
-    offering?.paymentMethod || "cash"
+    offering?.paymentMethod &&
+      formPaymentMethodOptions.includes(offering.paymentMethod)
+      ? offering.paymentMethod
+      : "cash"
   )
   const [notes, setNotes] = useState(offering?.notes || "")
   const [error, setError] = useState("")
@@ -489,28 +643,12 @@ function OfferingForm({
   async function handleSubmit() {
     setError("")
 
-    const parsedAmount = Number(amount)
-    const trimmedCurrency = currency.trim().toUpperCase()
+    const parsedAmount = getAmountNumber(amount)
     const trimmedDonorName = donorName.trim()
     const trimmedNotes = notes.trim()
 
     if (!amount.trim() || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       setError("El monto debe ser mayor a 0")
-      return
-    }
-
-    if (!trimmedCurrency) {
-      setError("La moneda es obligatoria")
-      return
-    }
-
-    if (type === "event" && eventId === noneValue) {
-      setError("Selecciona un evento para esta ofrenda")
-      return
-    }
-
-    if (source === "registered_user" && userId === noneValue) {
-      setError("Selecciona el usuario que realizó la ofrenda")
       return
     }
 
@@ -526,11 +664,11 @@ function OfferingForm({
           },
           body: JSON.stringify({
             amount: parsedAmount,
-            currency: trimmedCurrency,
+            currency: "MXN",
             type,
-            source,
-            eventId: eventId === noneValue ? null : eventId,
-            userId: userId === noneValue ? null : userId,
+            source: "manual",
+            eventId: null,
+            userId: null,
             donorName: trimmedDonorName,
             paymentMethod,
             paymentProvider: "manual",
@@ -563,7 +701,7 @@ function OfferingForm({
       onInteractOutside={(event) => event.preventDefault()}
     >
       <DialogHeader>
-        <DialogTitle>{isEdit ? "Editar ofrenda" : "Nueva ofrenda"}</DialogTitle>
+        <DialogTitle>{isEdit ? "Editar aportación" : "Nueva aportación"}</DialogTitle>
         <DialogDescription>
           Registra una entrada financiera de forma administrativa.
         </DialogDescription>
@@ -573,21 +711,27 @@ function OfferingForm({
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field>
             <FieldLabel>Monto</FieldLabel>
-            <Input
-              type="number"
-              min={0}
-              step="0.01"
-              value={amount}
-              onChange={(event) => setAmount(event.target.value)}
-            />
+            <div className="relative">
+              <span
+                aria-hidden="true"
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground"
+              >
+                $
+              </span>
+              <Input
+                inputMode="numeric"
+                placeholder="0"
+                value={amount}
+                onChange={(event) =>
+                  setAmount(formatAmountInput(event.target.value))
+                }
+                onKeyDown={(event) =>
+                  handleAmountStep(event, amount, setAmount)
+                }
+                className="pl-7"
+              />
+            </div>
           </Field>
-          <Field>
-            <FieldLabel>Moneda</FieldLabel>
-            <Input value={currency} onChange={(event) => setCurrency(event.target.value)} />
-          </Field>
-        </div>
-
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field>
             <FieldLabel>Tipo</FieldLabel>
             <Select value={type} onValueChange={(value) => setType(value as OfferingType)}>
@@ -595,29 +739,9 @@ function OfferingForm({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(typeLabels).map(([value, label]) => (
+                {formTypeOptions.map((value) => (
                   <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-          <Field>
-            <FieldLabel>Fuente</FieldLabel>
-            <Select value={source} onValueChange={(value) => setSource(value as OfferingSource)}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {source === "self_service" ? (
-                  <SelectItem value="self_service">
-                    Usuario
-                  </SelectItem>
-                ) : null}
-                {Object.entries(adminSourceLabels).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
+                    {typeLabels[value]}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -625,55 +749,28 @@ function OfferingForm({
           </Field>
         </div>
 
-        {type === "event" ? (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field>
-            <FieldLabel>Evento</FieldLabel>
-            <Select value={eventId} onValueChange={setEventId}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={noneValue}>Selecciona un evento</SelectItem>
-                {events.map((event) => (
-                  <SelectItem key={event._id} value={event._id}>
-                    {event.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <FieldLabel>Fuente</FieldLabel>
+            <Input value="Manual" disabled />
           </Field>
-        ) : null}
+          <Field>
+            <FieldLabel>Moneda</FieldLabel>
+            <Input value="MXN" disabled />
+          </Field>
+        </div>
 
-        {source === "registered_user" ? (
-          <Field>
-            <FieldLabel>Usuario</FieldLabel>
-            <Select value={userId} onValueChange={setUserId}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={noneValue}>Selecciona un usuario</SelectItem>
-                {users.map((user) => (
-                  <SelectItem key={user._id} value={user._id}>
-                    {user.name || user.email}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-        ) : (
-          <Field>
-            <FieldLabel>Nombre del donante</FieldLabel>
-            <Input
-              value={donorName}
-              onChange={(event) => setDonorName(event.target.value)}
-              placeholder={source === "anonymous" ? "Anónimo" : "Nombre opcional"}
-            />
-            <FieldDescription>
-              Puedes dejarlo vacío si no deseas registrar un nombre.
-            </FieldDescription>
-          </Field>
-        )}
+        <Field>
+          <FieldLabel>Nombre</FieldLabel>
+          <Input
+            value={donorName}
+            onChange={(event) => setDonorName(event.target.value)}
+            placeholder="Nombre opcional"
+          />
+          <FieldDescription>
+            Puedes dejarlo vacío si no deseas registrar un nombre.
+          </FieldDescription>
+        </Field>
 
         <Field>
           <FieldLabel>Método de pago</FieldLabel>
@@ -682,12 +779,12 @@ function OfferingForm({
             onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}
           >
             <SelectTrigger className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Object.entries(paymentMethodLabels).map(([value, label]) => (
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+              {formPaymentMethodOptions.map((value) => (
                 <SelectItem key={value} value={value}>
-                  {label}
+                  {paymentMethodLabels[value]}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -695,12 +792,15 @@ function OfferingForm({
         </Field>
 
         <Field>
-          <FieldLabel>Notas</FieldLabel>
+          <FieldLabel>Peticiones</FieldLabel>
           <Textarea
             value={notes}
             onChange={(event) => setNotes(event.target.value)}
-            placeholder="Referencia, contexto del registro, detalles internos..."
+            placeholder="Peticiones opcionales..."
           />
+          <FieldDescription>
+            Este campo es opcional.
+          </FieldDescription>
         </Field>
 
         <FieldError>{error}</FieldError>

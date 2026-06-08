@@ -502,12 +502,12 @@ async function buildOfferingsReport(
   )
 
   return {
-    title: "Reporte de Ofrendas registradas",
+    title: "Reporte de Aportaciones registradas",
     description:
-      "El actual reporte muestra como parte de los datos los montos registrados como ofrendas dentro del rango seleccionado.",
+      "El actual reporte muestra como parte de los datos los montos registrados como aportaciones dentro del rango seleccionado.",
     generatedBy,
     generatedAt,
-    fileName: `reporte-ofrendas-${generatedAt}`,
+    fileName: `reporte-aportaciones-${generatedAt}`,
     summary: [
       ["Rango", getRangeLabel(range)],
       ["Total de registros", rows.length],
@@ -591,6 +591,10 @@ async function buildEventRegistrationsReport(
   const notRequired = filteredRegistrations.filter(
     (registration) => registration.paymentStatus === "not_required"
   )
+  const selectedEventName =
+    eventId && eventId !== allEventsValue
+      ? getString(eventsById.get(eventId)?.name) || "Evento"
+      : "Todos los eventos"
 
   return {
     title: "Reporte de Registros de eventos",
@@ -600,7 +604,7 @@ async function buildEventRegistrationsReport(
     generatedAt,
     fileName: `reporte-registros-eventos-${generatedAt}`,
     summary: [
-      ["Evento", eventId && eventId !== allEventsValue ? eventId : "Todos los eventos"],
+      ["Evento", selectedEventName],
       ["Total de registros", rows.length],
       ["Pagados", paid.length],
       ["Pendientes", pending.length],

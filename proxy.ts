@@ -10,6 +10,7 @@ const protectedRoutes = [
   "/announcements",
   "/offerings",
 ]
+const hiddenRoutes = ["/givings", "/settings"]
 
 function isProtectedPath(pathname: string) {
   return protectedRoutes.some((route) => pathname.startsWith(route))
@@ -18,6 +19,10 @@ function isProtectedPath(pathname: string) {
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const isLoggedIn = Boolean(request.cookies.get("auth_session"))
+
+  if (hiddenRoutes.some((route) => pathname.startsWith(route))) {
+    return NextResponse.redirect(new URL("/dashboard", request.url))
+  }
 
   if (isProtectedPath(pathname) && !isLoggedIn) {
     const loginUrl = new URL("/login", request.url)
@@ -38,5 +43,7 @@ export const config = {
     "/inventory/:path*",
     "/announcements/:path*",
     "/offerings/:path*",
+    "/givings/:path*",
+    "/settings/:path*",
   ],
 }

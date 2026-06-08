@@ -66,7 +66,7 @@ type Giving = {
 const noneValue = "__none"
 
 const typeLabels: Record<GivingType, string> = {
-  voluntary: "Ofrenda voluntaria",
+  voluntary: "Aportación voluntaria",
   event: "Por evento",
   tithe: "Diezmo",
   special: "Especial",
@@ -174,7 +174,7 @@ export default function GivingsPage() {
     }
 
     if (type === "event" && eventId === noneValue) {
-      setError("Selecciona un evento para esta ofrenda")
+      setError("Selecciona un evento para esta aportación")
       return
     }
 
@@ -198,7 +198,7 @@ export default function GivingsPage() {
       const data = await res.json()
 
       if (!res.ok) {
-        setError(data?.message || "No se pudo registrar la ofrenda")
+        setError(data?.message || "No se pudo registrar la aportación")
         return
       }
 
@@ -209,12 +209,12 @@ export default function GivingsPage() {
       setNotes("")
       setSuccess(
         data?.providerPaymentId
-          ? `Ofrenda registrada con referencia ${data.providerPaymentId}`
-          : "Ofrenda registrada"
+          ? `Aportación registrada con referencia ${data.providerPaymentId}`
+          : "Aportación registrada"
       )
       await refreshGivings()
     } catch {
-      setError("No se pudo registrar la ofrenda")
+      setError("No se pudo registrar la aportación")
     } finally {
       setSaving(false)
     }
@@ -224,10 +224,10 @@ export default function GivingsPage() {
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
       <div className="flex flex-col gap-2">
         <TypographyH1 className="text-left text-2xl sm:text-3xl">
-          Dar ofrenda
+          Aportaciones
         </TypographyH1>
         <p className="text-sm text-muted-foreground">
-          Registra tu ofrenda para que quede ligada a tu iglesia y a tu cuenta.
+          Registra una aportación para que quede ligada a tu iglesia y a tu cuenta.
         </p>
       </div>
 
@@ -236,7 +236,7 @@ export default function GivingsPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <HandCoins className="h-5 w-5" />
-              Ofrenda
+              Aportación
             </CardTitle>
             <CardDescription>
               El pago con tarjeta se simula por ahora para pruebas internas.
@@ -256,7 +256,7 @@ export default function GivingsPage() {
                   <Input
                     type="number"
                     min={0}
-                    step="0.01"
+                    step="100"
                     value={amount}
                     onChange={(event) => setAmount(event.target.value)}
                     placeholder="0.00"
@@ -364,7 +364,7 @@ export default function GivingsPage() {
                     Registrando...
                   </>
                 ) : (
-                  "Registrar ofrenda"
+                  "Registrar aportación"
                 )}
               </Button>
             </FieldGroup>
@@ -373,7 +373,7 @@ export default function GivingsPage() {
 
         <Card className="min-w-0">
           <CardHeader>
-            <CardTitle>Mis ofrendas</CardTitle>
+            <CardTitle>Mis aportaciones</CardTitle>
             <CardDescription>
               Total personal registrado en esta iglesia.
             </CardDescription>
@@ -411,7 +411,7 @@ export default function GivingsPage() {
                     colSpan={5}
                     className="text-center text-muted-foreground"
                   >
-                    Todavía no has registrado ofrendas.
+                    Todavía no has registrado aportaciones.
                   </TableCell>
                 </TableRow>
               ) : (

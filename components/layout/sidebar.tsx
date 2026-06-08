@@ -11,9 +11,7 @@ import {
   Church,
   Megaphone,
   DollarSign,
-  Settings,
   Boxes,
-  HeartHandshake,
 } from "lucide-react"
 import { SidebarUser } from "@/components/layout/sidebar-user"
 import {
@@ -45,7 +43,7 @@ export const menu = [
     label: "Principal",
     items: [
       {
-        name: "Dashboard",
+        name: "Panel general",
         href: "/dashboard",
         icon: LayoutDashboard,
         roles: ["pastor", "lider", "miembro colaborador", "miembro"],
@@ -56,7 +54,7 @@ export const menu = [
     label: "Gestión",
     items: [
       {
-        name: "Miembros",
+        name: "Usuarios",
         href: "/users",
         icon: Users,
         roles: ["pastor", "lider"],
@@ -96,26 +94,9 @@ export const menu = [
     label: "Finanzas",
     items: [
       {
-        name: "Dar ofrenda",
-        href: "/givings",
-        icon: HeartHandshake,
-        roles: ["pastor", "lider", "miembro colaborador", "miembro"],
-      },
-      {
-        name: "Ofrendas",
+        name: "Aportaciones",
         href: "/offerings",
         icon: DollarSign,
-        roles: ["pastor"],
-      },
-    ],
-  },
-  {
-    label: "Sistema",
-    items: [
-      {
-        name: "Configuración",
-        href: "/settings",
-        icon: Settings,
         roles: ["pastor"],
       },
     ],

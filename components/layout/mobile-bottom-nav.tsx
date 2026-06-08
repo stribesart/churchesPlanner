@@ -22,8 +22,8 @@ export default function MobileBottomNav({ user }: Props) {
 
   // Simplified primary actions for bottom nav
   const primary = [
-    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, roles: ["pastor", "lider", "miembro colaborador", "miembro"] },
-    { name: "Miembros", href: "/users", icon: Users, roles: ["pastor", "lider"] },
+    { name: "Panel", href: "/dashboard", icon: LayoutDashboard, roles: ["pastor", "lider", "miembro colaborador", "miembro"] },
+    { name: "Usuarios", href: "/users", icon: Users, roles: ["pastor", "lider"] },
     { name: "Eventos", href: "/events", icon: Calendar, roles: ["pastor", "lider"] },
     { name: "Anuncios", href: "/announcements", icon: Megaphone, roles: ["pastor", "lider"] },
   ].filter((item) => canShowMenuItem(item, user?.role))
