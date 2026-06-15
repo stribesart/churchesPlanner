@@ -453,13 +453,13 @@ export default function UsersPage() {
           <DialogHeader>
             <DialogTitle>Link de registro</DialogTitle>
             <DialogDescription>
-              Genera un enlace temporal para registrar un miembro en esta iglesia.
+              Genera un enlace temporal para registrar miembros en esta iglesia.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4" aria-busy={inviteLoading}>
             <p className="text-sm text-muted-foreground">
-              Genera un enlace de un solo uso para registrar un miembro en esta iglesia. El enlace vence en 12 horas.
+              Genera un enlace reutilizable para registrar varios miembros en esta iglesia. El enlace vence en 12 horas.
             </p>
 
             {inviteUrl ? (

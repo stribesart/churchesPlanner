@@ -73,7 +73,7 @@ export async function POST(req: Request) {
     createdByRole: currentUser.user.role,
     defaultRole: "miembro",
     expiresAt,
-    maxUses: 1,
+    maxUses: null,
     usedCount: 0,
     isActive: true,
     createdAt: new Date(),

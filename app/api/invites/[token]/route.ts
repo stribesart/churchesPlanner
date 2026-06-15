@@ -7,6 +7,16 @@ function hashToken(token: string) {
   return createHash("sha256").update(token).digest("hex")
 }
 
+function hasReachedUseLimit(invite: unknown) {
+  const inviteRecord = invite as Record<string, unknown>
+
+  return (
+    typeof inviteRecord.maxUses === "number" &&
+    typeof inviteRecord.usedCount === "number" &&
+    inviteRecord.usedCount >= inviteRecord.maxUses
+  )
+}
+
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ token: string }> }
@@ -29,11 +39,13 @@ export async function GET(
   if (
     !invite ||
     invite.isActive === false ||
-    invite.usedCount >= invite.maxUses ||
+    hasReachedUseLimit(invite) ||
     invite.expiresAt < new Date()
   ) {
     return NextResponse.json(
-      { message: "El enlace de invitación expiró o ya fue usado" },
+      {
+        message: "El enlace de invitación expiró o alcanzó su límite de registros",
+      },
       { status: 410 }
     )
   }

@@ -18,6 +18,16 @@ function isPasswordValid(password: string) {
   return /(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{8,}/.test(password)
 }
 
+function hasReachedUseLimit(invite: unknown) {
+  const inviteRecord = invite as Record<string, unknown>
+
+  return (
+    typeof inviteRecord.maxUses === "number" &&
+    typeof inviteRecord.usedCount === "number" &&
+    inviteRecord.usedCount >= inviteRecord.maxUses
+  )
+}
+
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ token: string }> }
@@ -52,11 +62,13 @@ export async function POST(
   if (
     !invite ||
     invite.isActive === false ||
-    invite.usedCount >= invite.maxUses ||
+    hasReachedUseLimit(invite) ||
     invite.expiresAt < new Date()
   ) {
     return NextResponse.json(
-      { message: "El enlace de invitación expiró o ya fue usado" },
+      {
+        message: "El enlace de invitación expiró o alcanzó su límite de registros",
+      },
       { status: 410 }
     )
   }
@@ -104,10 +116,10 @@ export async function POST(
     {
       $inc: { usedCount: 1 },
       $set: {
-        isActive: false,
-        usedByUserId: userResult.insertedId,
-        usedAt: new Date(),
+        lastUsedByUserId: userResult.insertedId,
+        lastUsedAt: new Date(),
       },
+      $addToSet: { usedByUserIds: userResult.insertedId },
     }
   )
 
