@@ -4,7 +4,7 @@ import { NextResponse } from "next/server"
 import clientPromise from "@/lib/mongodb"
 import { getCurrentTenantUser } from "@/lib/tenant"
 
-const INVITE_EXPIRES_IN_HOURS = 12
+const INVITE_EXPIRES_IN_DAYS = 30
 
 function normalizeRole(role: unknown) {
   if (typeof role !== "string") return ""
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
   const token = createToken()
   const tokenHash = hashToken(token)
   const expiresAt = new Date(
-    Date.now() + INVITE_EXPIRES_IN_HOURS * 60 * 60 * 1000
+    Date.now() + INVITE_EXPIRES_IN_DAYS * 24 * 60 * 60 * 1000
   )
 
   await globalDb.collection("invites").insertOne({
@@ -84,6 +84,6 @@ export async function POST(req: Request) {
   return NextResponse.json({
     inviteUrl,
     expiresAt,
-    expiresInHours: INVITE_EXPIRES_IN_HOURS,
+    expiresInDays: INVITE_EXPIRES_IN_DAYS,
   })
 }
